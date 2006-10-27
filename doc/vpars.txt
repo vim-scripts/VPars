@@ -1,0 +1,1686 @@
+*vpars.txt*	VPars: Vim Parameter Substitution      Last Change: 2006-10-27
+
+			      VPars User Manual~
+				 Version 0.1~
+
+		       Copyright (c) 2006 by Bernd Pol
+			    <bernd.pol@online.de>
+
+This material may be distributed only subject to the terms and conditions set
+forth in the Open Publication License, v1.0 or later (the latest version is
+presently available at http://www.opencontent.org/openpub/).
+
+To install VPars, see|vpars-install-and-customize|.
+
+==============================================================================
+CONTENTS                                              *vpars* *vpars-contents*
+
+|vpars-intro|			What is VPars?
+|vpars-example| 		    An introductory example
+|vpars-basic|			    Basic principles
+|vpars-defininitions|		    Some definitions of terms
+|vpars-text-block|			Dedicated text block
+|vpars-label|				Variable label
+|vpars-default|				Default value
+|vpars-delete|				Deleting variables
+|vpars-substitution-text|		Substitution (or replacement) text
+
+|vpars-variables|		Variable types
+|vpars-commons|			    Common structure of VPars variables
+|vpars-delimiters|			Delimiters
+|vpars-restrictions|			Restrictions
+|vpars-cursor|			    The cursor mark
+|vpars-simple-variables|	    Simple variables
+|vpars-explicit-labels|		    Explicitely labeled variables
+|vpars-alternatives|		    Providing alternative substitutions
+|vpars-alternatives-example|		An example
+|vpars-alternatives-syntax|		The syntax of VPars alternatives
+|vpars-variables-order|		    Defining a variable sequence order
+|vpars-variables-order-example|		An example
+|vpars-variables-order-delay|		Delaying variables
+
+|vpars-substitution|		Variable substitution
+|vpars-substitution-simple|	    Simple variables
+|vpars-substitution-explicit|	    Explicitely labeled variables
+|vpars-substitution-alternative|    Selecting alternatives
+|vpars-substitution-cycle|	    The substitution cycle
+|vpars-modes|				Working modes
+|vpars-substitution-block|		Dedicated text block
+|vpars-substitution-delayed|		Delayed variables
+|vpars-atend|				The block end condition
+|vpars-batch|			    Batch processing a substitution list
+|vpars-batch-example|			Example
+|vpars-batch-syntax|			Syntax
+
+|vpars-interface|		The VPars Interface
+|vpars-globals|			    Global variables
+|vpars-functions|		    Functions
+|vpars-hooks|			    Pre and post processing hooks
+|vpars-locals|			    Buffer local variables
+|vpars-properties|			Current variable properties
+|vpars-boundaries|			Text block boundaries
+
+|vpars-install-and-customize|	Installing and customizing
+|vpars-installing|		    Installing VPars
+|vpars-key|			    Redefining the trigger key (default: <F3>)
+|vpars-skip-atend|		    Advancing over the block end
+|vpars-verbose|			    Using verbose mode
+
+|vpars-thanks|			Thanks
+|vpars-index|			Index
+
+==============================================================================
+WHAT IS VPARS							 *vpars-intro*
+
+"VPars" literally means "Vim Parameter Substitution" and as such forms the
+basis of yet-another-snippets-mechanism. It allows to substitute certain
+preformatted variables in a given text block either interactively or in batch
+mode.
+
+Basically it is simple: You sprinkle portion of text with some kind of
+variables, each delimited by "<| ...  |>" brackets, mark the start and end
+lines of this text in some suitable fashion (e.g.  by visually selecting this
+text block with the "v", or "V"  and movement commands) and then repeatedly
+press  the <F3> function key, enter some replacement text (or leave the
+default intact), press <F3> again and so on until all this text portion has
+been processed.
+
+AN INTRODUCTORY EXAMPLE			 *vpars-intro-example* *vpars-example*
+
+For example you may use some clever templates script to help in C programming,
+which will insert some complete pre-fabricated statements automatically upon
+pressing some shortcut key sequence.  The result for an "if" statement may
+then look like. >
+
+	if ( <|some condition|> ) {
+	}
+
+If your template script is really clever working, it will silently have marked
+the beginning and end lines properly and put the cursor right after the
+beginning "<|" variable delimiter, just before the "s" of "some condition".
+
+Now, as the cursor position is crucial for the workings of VParts, let us
+write a "#" sharp sign in its place: >
+
+	if ( <|#some condition|> ) {
+	}
+
+Usually Vim will now even be in insert mode, then, so all you have to do now
+is to enter the proper condition, say: >
+
+	if ( <|VParts == SMART#some condition|> ) {
+	}
+
+and then press <F3>.  VParts will immediately replace the variable by what you
+have typed in and put the cursor at the end of this statement: >
+
+	if ( VParts == SMART ) {
+	}#
+
+Not very impressive? Well, let's look at a more elaborate piece.  Say, your
+script has entered a template for the ubiquitous C "for" loop ("#" denotes the
+cursor again): >
+
+	for ( <|# i |> = <| 0 |>; <| i |> < <| n |>; <| i |>++ ) {
+	    <|>;
+	}
+
+You decide to keep the "i" loop variable and immediately press <F3>.  Now,
+this is what happens: >
+
+	for ( i = <|# 0 |>; i < <| n |>; i++ ) {
+	    <|>;
+	}
+
+Well, this is a real time saver, isn't it? VParts did replace each and every
+<| i |> VParts variable by the default "i" symbol, just as wanted.  And then
+it positioned the cursor to the next variable in the sequence, the loop
+starting value, defaulting to "0".   This, on the other hand, is not to your
+needs, so you typed in another value: >
+
+	for ( i = <|99# 0 |>; i < <| n |>; i++ ) {
+	    <|>;
+	}
+
+Press <F3>, the "<| 0 |>" variable vanishes, making place to the "99" you
+wanted.  And the cursor will be put to the following "<| n |>" VPars variable,
+denoting the loop end condition.  There you decided to use a predefined
+constant value instead of the "n": >
+
+	for ( i = 99; i < <|BIG_LOOP# n |>; i++ ) {
+	    <|>;
+	}
+
+Another <F3> will get the loop conditions right, so you finally get: >
+
+	for ( i = 99; i < BIG_LOOP; i++ ) {
+	    #;
+	}
+
+See the cursor? It totally replaced the "<|>", ready for you to enter some
+statements (yes, Vim is kept in insert mode, too).  You can do some simple
+typing, or decide to leave this place alone and go on with outlining the basic
+program structure.  So, another <F3> brings you to the end of this statement
+template: >
+
+	for ( i = 99; i < BIG_LOOP; i++ ) {
+	    ;
+	}#
+
+and there the cursor remains at subsequent <F3> presses, unless you
+explicitely replace it in the course of your editing session.
+
+Let's sum this up:
+
+------------------------------------------------------------------------------
+BASIC PRINCIPLES			      *vpars-basic* *vpars-principles*
+
+VPars usually works on a dedicated text block (see:|vpars-dedicated-text|),
+whose boundaries have been marked by some block local variables
+(see:|vpars-text-boundaries|).
+
+Starting from the current cursor position in this dedicated text block, VPars
+searches on command (usually after an <F3> keypress, or in answer to some
+outside function call) for|vpars-text-variables|delimited by "<| ... |>".
+
+If it finds one, the cursor is put right after the "<|" variable delimiter and
+Vim will be switched to insert mode, ready to enter some text the user wants
+to be substituted in place of this variable.  This can be almost anything,
+even multiple lines, but the cursor must remain inside the "| ... |"
+delimiters upon the next <F3> keypress.
+
+This subsequent <F3> keypress commands VParts to investigate the text between
+the left "<|" variable delimiter and the current cursor position.  If there is
+any, it will replace the whole variable from the beginning "<|" up to the
+ending "|>" delimiters.
+
+This done, VParts searches all of the dedicated text block for any variable
+with the same contents of the just replaced one in the moment it had been
+encountered by VParts before the user did alter it.  I.e. if this variable
+looked like "<|my VPars test|>", VParts now searches for another occurrences
+of exactly this "<|my VPars test|>" variable and replaces anyone it finds by
+the text the user had entered in the first place.  So, if for example the
+initially found "<|my VPars test|>" had been replaced by "VPars is great!",
+any other place, where a "<|my VPars test|>" was located will now read "VPars
+is great!".  An example:
+
+The text block before substitution ("#" again denotes the cursor position): >
+
+	Dear John, <|#my VPars test|>  Just as I expected.
+	It does	everything I want.  Everything!  <|my VPars test|>
+	(Well, almost--but nevertheless, <|my VPars test|>)
+	Tell <|the other person|> about it.
+
+After the user entered the replacement text: >
+
+	Dear John, <|VPars is great!#my VPars test|>  Just as I expected.
+	It does	everything I want.  Everything!  <|my VPars test|>
+	(Well, almost--but nevertheless, <|my VPars test|>)
+	Tell <|the other person|> about it.
+
+And then, in answer to the <F3> keypress: >
+
+	Dear John, VPars is great!  Just as I expected.
+	It does	everything I want.  Everything!  VPars is great!
+	(Well, almost--but nevertheless, VPars is great!
+	Tell <|#the other person|> about it.
+
+This done, VPars searches for another variable, starting right after the
+location, where the user had entered the replacement text.  And, if found
+("<|the other person|>" in our example), everything starts over again.
+
+But you need not type in anything, if the current variable contents suit your
+needs.  Just press <F3> again without moving the cursor, and VParts will
+just only remove the delimiters. In our example: >
+
+	Dear John, VPars is great!  Just as I expected.
+	It does	everything I want.  Everything!  VPars is great!
+	(Well, almost--but nevertheless, VPars is great!
+	Tell the other person about it.#
+
+Once every variable in the dedicated text has been substituted, VPars will put
+the cursor at the end of this text, and any subsequent <F3> keypress will do
+nothing until another dedicated text block is to be worked on.
+
+------------------------------------------------------------------------------
+SOME DEFINITIONS OF TERMS		   *vpars-defininitions* *vpars-terms*
+
+Every VPars variable bears a label, by which it is found, and a default value
+to be used in case the user does not provide a replacement text.
+
+More formally:
+				     *vpars-dedicated-text* *vpars-text-block*
+dedicated text block ~
+
+	This is the text on which VPars usually works.  It is line-oriented,
+	i.e. it exceeds from a line (marked by the buffer local variable
+	b:StartInsert) to a given end line (marked by b:EndInsert).  These
+	delimiting markers will usually be set by the script utilizing the
+	VPars substitution mechanism, or by visually selecting a text block
+	and the pressing <F3>.
+	
+	VPars processes this dedicated text repeatedly in turns or so-called
+	processing cycles (see:|vpars-substitution-cycle|) until any VPars
+	variable in there has been processed (see also:
+	|vpars-delayed-variables|).
+
+	Note: It is possible to have variables outside a dedicated text be
+	      processed by VPars (see:|vpars-global-mode|).  This processing
+	      will be strictly linear, however.
+
+								 *vpars-label*
+variable label ~
+
+	This is the text initially found between the "<| ... >|" delimiters.
+	Once found, VPars will remember this label, so the text can be altered
+	without harm. You may even delete it.  This will cause all variables
+	bearing this label be deleted, but VPars will still find all of them.
+
+							       *vpars-default*
+default value ~
+
+	In simple variables, this is exactly the same text as the label, just
+	what has been found between "<|" and the corresponding "|>".  This
+	text will replace the variable, if on pressing <F3> the cursor was
+	found immediately right of the "<|" delimiter.  VParts works this way,
+	even if there had some text been entered. Whenever it encounters the
+	cursor at the leading "<|", it will use the default value. That way,
+	if you decide while typing some replacement, the default would suit
+	your purposes better, you don't need to erase anything.  Just only put
+	the cursor back to the variable start and press <F3>.
+
+								*vpars-delete*
+deleting variables~
+
+	There is a slight exception to this rule:  In case you removed the
+	default text altogether, so that the variable now looks "<||>", with
+	the cursor in between the bars, <F3> will cause all variables bearing
+	this label be deleted altogether.
+
+						     *vpars-substitution-text*
+substitution (or replacement) text ~
+
+	This is the text VPars encounters between the "<|" left variable
+	delimiter and the current cursor position, after <F3> had been
+	pressed.  The cursor must however still be to the left of the "|>"
+	right variable delimiter.  VPars uses this text to replace any
+	occurrence of a variable bearing the same label as this one inside the
+	dedicated text block.  Variables outside this dedicated text block, if
+	any, will remain unaltered, however.
+
+	There are almost no restrictions (see:|vpars-restrictions|) on the
+	substitution text, except that bars must be escaped like this: "\|".
+	There can even be multiple lines in such a replacement.
+
+	  *vpars-substitute-multilines* *vpars-multiple-lines* *vpars-NL-mark*
+	Note:
+
+	- When substituting multiple lines, VPars will internally pack the
+	  user input lines into one single intermediate string, where '<NL>'
+	  marks represent the actual newlines inserted.  These '<NL>' marks
+	  will show up in the b:VarSubst block local variable to facilitate
+	  searching and replacing other equally labeled variables.  They will
+	  be replaced by actual newlines afterwards, before the next variable
+	  in sequence is searched.
+
+	  An external script can use such '<NL>' marks in a postprocess
+	  variable hook function (see:|vpars-post-substitution-hook|) to
+	  insert a multiline string into the text which VPars will then
+	  break down actually into multiple lines afterwards.
+
+==============================================================================
+VARIABLE TYPES				       *vpars-variables* *vpars-types*
+
+COMMON STRUCTURE OF VPARS VARIABLES	     *vpars-commons* *vpars-structure*
+
+Basically, each VPars variable is constructed after a simple scheme which
+comes in several flavours: >
+
+	<| default-value-and-label |>
+	<| default-value |: explicit-label :|>
+	<| alternative-1 | ... | alternative-n |>
+	<| alternative-1 | ... | alternative-n |: explicit-label :|>
+
+
+DELIMITERS						    *vpars-delimiters*
+
+VPars variables will be distinguished from the surrounding text by a common
+outer delimiter pair.  Additionally there may exist inner delimiters to
+distinguish different variable types.  Currently any of these delimiters is
+hard coded inside the script and may not be redifined.  This might change in a
+later revision.
+
+					     *vpars-<|* *vpars-left-delimiter*
+<|	left outer delimiter ~
+
+	Every VPars variable starts with this token.
+
+					    *vpars-|>* *vpars-right-delimiter*
+|>	right outer delimiter ~
+
+	Every VPars variable ends with this token.
+
+	Note: Both left and right other delimiters must be on the same line.
+
+					*vpars-|:* *vpars-left-explicit-label*
+|:	left explicit label delimiter ~
+
+	This token separates an explicit label (|vpars-explicit-labels|) from
+	the value part inside a VPars variable.  Any text from here up to the
+	corresponding ":|>" constitutes the label by which this variable will
+	be known to VPars.
+
+				       *vpars-:|>* *vpars-right-explicit-label*
+:|>	right explicit label delimiter ~
+
+	This is the right outer VPars variable delimiter in case the variable
+	bears an explicit label (|vpars-explicit-labels|).
+
+	Note: The colon bears this delimiting function only if there is a
+	      matching "|:" left explicit label delimiter.  Otherwise it will
+	      become part of the value to the left of it: >
+
+			<|my val|:my name:|>
+				 default value = "my val"
+				explicit label = ":my name:"
+
+			<|my defaults:|>
+				 default value = "my defaults:"
+				 default label = "my defaults:"
+~
+				      *vpars-|* *vpars-alternatives-delimiter*
+|	alternative value delimiter ~
+
+	If found within the value part of a VPars variable, i.e. in between
+	delimiting "<| ... |>" or "<| ... |:" pairs, VPars will count the
+	(possibly empty) text strings to the left and the right of such a bar
+	as alternative values (see: |vpars-alternatives|), his variable may
+	only be replaced with.  Example: >
+
+			<|text 1|text 2|text 3|>
+
+				alternative value 1 = "text 1"
+				alternative value 2 = "text 2"
+				alternative value 3 = "text 3"
+
+			The "|" bars between "text 1" and "text 2" as well as
+			between "text 2" and "text 3" are alternative value
+			delimiters.
+~
+	VPars will replace the variable by that text alternative the cursor is
+	currently in when <F3> was pressed.
+
+						    *vpars-empty-substitution*
+	Note: There can be adjacent bars.  These denote empty substitutions,
+	      which when selected  will cause the variable be deleted: >
+
+	      		<||text 1|>
+~
+	      This variable will either be removed (cursor between "||" or
+	      replaced by "text 1" (cursor anywhere in between "|text 1|").
+
+RESTRICTIONS						  *vpars-restrictions*
+
+Labels, default and replacement texts can be almost anything. There are only
+few restrictions on VPars variables and substitution texts:
+
+- No VPars variable may exceed a line. ~
+
+  This means both "<|" and "|>" delimiters of a given VPars variable must be
+  on the same line. This has several consequences:
+
+  1. A script utilizing VPars must take care not to break a variable apart by
+     restructuring actions as e.g. reformatting the recently inserted text
+     before all VPars variables have been replaced.
+
+  2. Alternatives are limited to short string sequences.  A clever script can
+     however use some kind of markers as alternative substitutions and later
+     process the inserted one by a hook function (see:|vpars-hooks|) to insert
+     another perfect VPars variable in its place which will afterwards be
+     processed in another cycle (see:|vpars-substitution-cycle|) through the
+     dedicated text.
+
+  Note: It is however possible for substitution texts to extend over several
+        lines.
+
+- Texts inside a VPars variable cannot contain VPars variables themselves.~
+
+  This clearly applies to labels, but to default, alternative, and
+  substitution texts as well.  Clever scripts can however post-process the
+  substituted texts by a hook function (see:|vpars-hooks|) to insert another
+  perfect VPars variables which will afterwards be processed through the
+  dedicated text in another cycle (|vpars-substitution-cycle|).
+
+------------------------------------------------------------------------------
+THE CURSOR MARK							*vpars-cursor*
+
+This is the simplest type of a VPars variable:
+
+	<|> ~
+
+VPars will remove it completely on encounter and leave the cursor there.  Then
+it switches to insert mode, ready to enter.
+
+------------------------------------------------------------------------------
+SIMPLE VARIABLES				      *vpars-simple-variables*
+
+Simple variables consist of some text, delimited by "<| ... |>".
+
+	<|label and default value|> ~
+
+The text between the bars denotes label and default substitution text alike
+and can be anything, provided
+
+- it does not exceed the line (i.e. both left and right delimiters must remain
+  on the same line), and
+
+- there are no other "<|" or "|>" variable delimiters included.
+
+VPars will put the cursor immediately right of the left delimiter bar and
+switch to insert mode.  Any text except "<|" or "|>" variable delimiters may
+then be entered, even multiple lines.  VPars will upon the next <F3> keypress
+consider any such sequence of characters between the left delimiter bar and
+the cursor to be the substitution and replace everything starting with the
+"<|" left delimiter up to the "|>" right delimiter by this substution text.
+
+Note:
+		*vpars-automatic-substitution* *vpars-replace-all-simple-vars*
+- If working in between a dedicated text block (|vpars-text-block|), any other
+  simple variable, bearing exactly the same "label and default value" which
+  had been first encountered by VPars will be replaced as well.  If the simple
+  variable was located outside such a dedicated text block however no other
+  substitution will happen.
+
+				*vpars-role-of-the-cursor* *vpars-cursor-role*
+- Only the text between the left delimiter bar and the cursor counts.  VPars
+  will remember the initially encountered "label and default value".  This may
+  be deleted or changed in any way afterwards without harm (and without any
+  consequences to substitution).
+
+						  *vpars-default-substitution*
+- To substitute the variable by its given default value, just leave the cursor
+  immediately right of the left delimiting bar (# denotes the cursor): >
+
+		<|#label and default value|>
+~
+  In this special case <F3> will replace the variable by exactly the default
+  value it did encounter initially ("label and default value" in our example),
+  even if it had been altered in the meantime.
+
+		      *vpars-remove-simple-variable* *vpars-simple-var-delete*
+- To remove this (and every equally labeled VPars variable in the dedicated
+  text block) altogether, any text between the left and right delimiting bars
+  must be deleted and the cursor remain between those bars before pressing
+  <F3>: >
+  		<|#|>
+~
+						  *vpars-cursor-in-delimiters*
+- The behaviour if the cursor was put in between the "<|" or "|>" delimiting
+  pairs (or immediately in front of the left "<|" one) before pressing <F3>
+  currently is not very consistent.  Usually this (possibly altered) variable
+  will simply be skipped and then be handled in the next turn
+  (|vpars-substitution-cycle|).  But there may be irregular substitutions, so
+  don't count on this behaviour for now.
+
+------------------------------------------------------------------------------
+EXPLICITELY LABELED VARIABLES			       *vpars-explicit-labels*
+
+There are cases where the simple "label and default value" strategy of VPars
+variables will not be enough.  Consider for example a list, where some items
+may accept the same default value, but not simultaneously, i.e. you have to
+decide for every such item in turn whether it will receive the default or an
+explicitely enterend value.  To accomplish this there must be a way to
+identify such a variable independently from other, similar ones.
+
+VPars allows this by introducing an explicitely label a variable in a two
+parts format such as:
+
+	<|default value|:explicit label:|> ~
+
+Whenever VParts encounters such a variable, it will remember two different
+facts:
+
+- the "default value", which behaves exactly like the one in a simple variable
+  (|vpars-simple-variables|), and
+
+- an ":explicit label:" by which it will identify any other variable to be
+  replaced by the same substitution text (|vpars-substitution-text|).
+
+Upon an <F3> keypress, Vpars will replace all of this variable from the "<|"
+left delimiter to the "|>" right one by the text extending from the left
+delimiting bar up to the cursor position, or by the "default value" if the
+cursor was found immediately right of the first delimiting bar.  This is
+exactly like the behaviour in a simple variable.
+
+					 *vpars-precedence-of-explicit-labels*
+
+The difference between simple and explicitely labeled VPars variables lies in
+the way the VPars will treat the other variables in the dedicated text block
+(|vpars-text-block|).  VPars will replace ANY variable bearing this ":explicit
+label:" even if it features another default value or even is an alternative
+selection (|vpars-alternatives|).
+
+Effectively, explicite labels always have precedence over other means to
+handle a VPars variable.  Usually this need not bother, but a clever script
+might use this feature for additional flexibility by deliberately selecting
+one of differently constructed VPars variables, all bearing the same explicit
+label, in the first place.
+
+Note:
+						       *vpars-explicit-colons*
+- The colons are part of the explicite label.  I.e. VPars will always look for
+  ":explicite label:" instead of "explicite label" alone when searching for an
+  explicitely labeled variable to replace.  A hook function (|vpars-hooks|) in
+  a script which wants to pre- or postprocess variables must take this into
+  account.
+						      *vpars-explicit-reparse*
+- If at an <F3> keypress the cursor is located in the explicit label part,
+  VPars will assume this label was altered on purpose and will immediately
+  reparse the variable.
+  
+  If for example the initially parsed variable ("#" denotes the
+  current cursor position): >
+
+  	<|#my value|:my var:|>
+~
+  when pressing <F3> will look like: >
+
+	<|my value|:my extra# var:|>
+~
+  VPars will reparse this altered variable: >
+
+  	<|#my value|:my extra var:|>
+~
+  and now consider it as being labeled ":my extra var:" instead of the
+  previous ":my var:". This will also include an eventually altered label
+  part: >
+
+	<|my other value|:my extra# var:|>
+~
+  will result in this reparse: >
+
+	<|#my other value|:my extra var:|>
+~
+  where the ":my extra var:" variable will be remembered as featuring the
+  default value "my other value" instead of the previous "my value".
+
+------------------------------------------------------------------------------
+PROVIDING ALTERNATIVES					  *vpars-alternatives*
+
+There are cases where the user should better be relieved from the need to
+explicitely enter some value.  This will not only ease the user's tasks but
+help to eliminate some other source of error.
+
+AN EXAMPLE					  *vpars-alternatives-example*
+
+Let us look for example at the versatile Doxygen (http://www.doxygen.org)
+documentation generator.  It parses a program code (usually C++) for specially
+formatted comments where it will build the documentation from.  For example
+you can force it to classify a function parameter as being input, output or
+input/output oriented by appending the Doxygen "\param" tag accordingly. >
+
+	\param[in]
+	\param[out]
+	\param[inout]
+~
+or even have no such classification at all.  Now assume there is a template
+script utilizing VPars to construct a Doxygen function header which beside
+others will provide a list of parameter tags, each looking like this ("#",
+again, denotes the current cursor position): >
+
+	\param arg1 <|#|:arg1-description:|>
+~
+The user must provide an (optionally empty) description of the purposes of the
+parameter named "arg1".  (Besides, we used an expliciteley labeled variable
+here (|vpars-explicit-labels|) to allow an empty default value.)  Yet, this is
+not completely satisfactory---the user should be forced to enter those "[in]",
+"[out]", etc. "\param" modifiers as well.  One attempt could introduce another
+variable like this >
+
+	\param<|#[inout]|:arg1-mod:|> arg1 <||:arg1-description:|>
+~
+and let the user modify this default according to his needs.  But this is
+unnecessarily error prone.  VPars provides a more secure way: >
+
+	\param<|#|[in]|[out]|[inout]|> arg1 <||:arg1-description:|>
+~
+This new variable might look a bit confusing at first sight, but it really
+does what we want.  It provides a series of alternative values, each separated
+by a bar from the others.  In sequential order there are: >
+
+	||		an empty value:         no param modifiers at all
+	|[in]|		the "[in]" modifier:    an input only parameter
+	|[out]|		the "[out]" modifier:   an output parameter
+	|[inout]|	the "[inout]" modifier: an input/output parameter
+~
+The user now only needs to put the cursor somewhere into the alternative
+value he/she wants and then press <F3>. VPars then does everything else.
+This selection for example: >
+
+	\param<||[in]|[o#ut]|[inout]|> arg1 <||:arg1-description:|>	
+~
+will result in the line: >
+
+	\param[out] arg1 <|#|:arg1-description:|>	
+~
+ready to complete (or leave out) the description part.
+
+
+THE SYNTAX OF VPARS ALTERNATIVES		   *vpars-alternatives-syntax*
+
+VPars alternatives are syntactically like other VPars variables
+(|vpars-simple-variables|, |vpars-explicit-labels|) but replace the default
+value part with a list of alternative selections separated by bars:
+
+	<|alt 1|alt 2| ... |alt n|> ~
+or
+	<|alt 1|alt 2| ... |alt n|:explicit label:|> ~
+
+VPars will put the cursor immediately right right of the left delimiter bar and
+switch to insert mode.  But in this case the user is not supposed to enter any
+text.  All that needs to be done is to put the cursor on the alternative to be
+selected and the press <F3>.
+
+VPars will take all characters between the bars surrounding the cursor as
+substitution string and replace the variable by this text.  The exact cursor
+postition does not matter, any position from on the first alternative
+character up to being on the right delimiting bar (respectively right after
+the last alternative character) will count.
+
+Note:
+			  *vpars-alternatives-empty* *vpars-empty-alternative*
+- There may be empty alternatives.  In this case two bars in the alternatives
+  list must be immediately adjacent to each other: >
+
+  	<||alt 1|>
+~
+  VPars will parse thes variable reaturing an empty alternative ("||") and the
+  alternative text "alt 1").  If after pressing <F3> the cursor is found
+  located between the adjacent bar ("#" denotes the cursor position): >
+
+  	<|#|alt 1|>
+~
+   then the variable will be deleted altogether.
+
+					     *vpars-alternatives-escaped-bars*
+- To include some bar in an alternative, it must be escaped: "\|": >
+
+  	<| up only | up\|down | down only |>
+~
+  will be parsed into 3 alternatives: " up only ", " up|down ", " down only ".
+
+					    *vpars-alternatives-non-repeating*
+- In its simple form without explicit label, an alternative will be processed
+  only once.  No other alternatives variable will be automatically replaced,
+  even if it has exactly the same format.  So, for example, if in ("#"
+  denoting the current cursor position): >
+
+  	alternative 1:<|# a | b | c |>and
+	alternative 2:<| a | b | c |>selected..
+~
+  the first alternative VPars variable was replaced by " a ", this will have
+  no effect on the other line: >
+
+  	alternative 1: a and
+	alternative 2:<|# a | b | c |>selected.
+~
+  The user may select whatever other variable is wanted, so the result might
+  look like: >
+
+  	alternative 1: a and
+	alternative 2: c selected..
+~
+  To have other VPars alternatives variables be replaced as well, they must
+  all bear the same explicit label as the currently parsed one.
+
+						  *vpars-alternatives-altered*
+- VPars will at an <F3> keypress check, whether the user did alter the
+  alternatives list.  If so, it will assume this has been done on purpose and
+  will immediately reparse the variable.  Hence if the variable initially
+  parsed as ("#" denotes the cursor position): >
+
+  	<|#alt 1|alt 2|>
+~
+  with the internally remembered alternatives "alt 1", and "alt 2", before
+  pressing <F3> now looks like: >
+
+	<|alt 1|AAA#|>
+~
+  VPars will reparse this immediately as: >
+
+	<|#alt 1|AAA|>
+~
+  now remembering the variables "alt 1", and "AAA".
+
+  This reparse will occur independently of which alternative the cursor
+  currently was positioned at.
+
+					     *vpars-alternatives-restrictions*
+- The usual restrictions concerning variable length will hold with
+  alternatives, too.  I.e. the variable cannot exceed the current line, both
+  the "<|" starting as the "|>" must be on the same line.  This effectively
+  reduces the number of possible alternatives (there should not be too many
+  atlernatives anyway to be useful).  And it reduces the amount of text for
+  any alternative.
+
+  A clever script can however compensate for this limitation, postprocessing
+  the substitution by a hook function (|vpars-hooks|).  The user may then e.g.
+  select between some useful tags which the postprocessing hook function
+  afterwards will substitute by another lengthy text before VPars will go on
+  and find the next variable.
+
+------------------------------------------------------------------------------
+DEFINING A SEQUENCE ORDER FOR VARIABLES		       *vpars-variables-order*
+
+Usually VParts will work the variables in the dedicated text block
+(|vpars-text-block|) in strict sequential order, starting from the line marked
+by b:StartInsert down to the line marked by b:EndInsert, thereby substituting
+each variable it detects in turn.  Thus in >
+
+	First variable in sequence is <|var 1|>,
+	second variable in sequence <|var 2|>.
+
+VPars will first handle <|var 1|> and then <|var 2|>.  But there often are
+occasions where there are variables which cannot easily handled in such a
+simple sequence.
+
+
+AN EXAMPLE				       *vpars-variables-order-example*
+
+Consider for example the following situation: >
+
+	First variable in sequence is <|var 1|>,
+	third variable in sequence is <|var 3|>,
+	second variable in sequence is <|var 2|>.
+
+We want first substitute <|var 1|>, then skip <|var 3|> and get replacement
+for <|var 2|> and only after this was done let VPars handle the intermittent
+<|var 3|>. But this won't work this way. There needs to be some means to
+impose a specific order of processing on the variables.
+
+This is accomplished in that VPars explicitely allows to skip a variable in
+the current turn by enclosing it into an extra pair of "< ... >" delimiters.
+Our example would then read: >
+
+	First variable in sequence is <|var 1|>,
+	third variable in sequence is <<|var 3|>>,
+	second variable in sequence is <|var 2|>.
+
+Now, using the default values, after substituting the first <|var 1|> variable
+this would look like this (# denotes the current cursor position): >
+
+	First variable in sequence is var 1,
+	third variable in sequence is <|var 3|>,
+	second variable in sequence is <|#var 2|>.
+
+See what happened?  VPars did replace <|var 1|> by its default value, then
+searched for the next "<|" variable start delimiter.  It found "<|var 3|>" and
+noted that it was surrounded by an extra pair of "< ... >" brackets.
+Therefore this variable was not deemed for substitution yet, but only the
+outer "< ... >" brackets pair removed.  This done, VPars searched for the next
+variable in this dedicated text block and found <|var 2|> where it now waits
+for a substitution command.
+
+Using the default value again we get this after pressing <F3>: >
+
+	First variable in sequence is var 1,
+	third variable in sequence is <|#var 3|>,
+	second variable in sequence is var 2.
+
+VPars did replace <|var 2|> and tried to find another "<|" delimiter following
+this in the dedicated text block.  As there was none, it went back to the
+start of this dedicated text block and tried again, this time finding the
+<|var 3|> variable left over from the previous turn.  Now as there were no
+more additional outer "< ... >" brackets found, <|var 3|> is about to be
+replaced.
+
+Using the default value once again, we got this situation: >
+
+	First variable in sequence is var 1,
+	third variable in sequence is var 3,
+	second variable in sequence is var 2.#
+
+Which means, VPars did replace <|var 3|> as wanted and tried to find another
+"<|" delimiter.  There was none in sequence, so it took even another turn
+through the dedicated text block, this time finding none at all.  So it noted
+this dedicated text block as being completely processed and put the cursor at
+its very end, there waiting for the user to proceed with the work as needed.
+
+
+DELAYING VARIABLES    *vpars-delaying-variables* *vpars-variables-order-delay*
+
+The key to all this is that VPars repeatedly works any dedicated text block
+(|vpars-text-block|) in turns until there are no more VPars variables left.
+In each turn one level of "< ... >" delimiters of any VPars variable
+encountered will effectively be removed.  If there are any such delimiter
+brackets left, this variable will be skipped, otherwise it will be processed
+for substitution.
+
+Such delaying of variables within a turn allows to define an order in which
+the variables inside a dedicated text block will be processed. More formally:
+
+	delay level 0:	      <| ... |> ~
+	delay level 1:	     <<| ... |>> ~
+	... ~
+	delay level n:	  <...<| ... |>...> ~
+	delay level n+1: <<...<| ... |>...>> ~
+
+Note:
+
+- There is no limit on delay levels possible, provided the variable including
+  all surrounding brackets completely fits within the curent line.
+
+- Delaying variables outside a dedicated text block is only of limited value.
+  Such variables will have their outer brackets removed when encountered, but
+  there will be no automatic repeated processing.
+
+- Delayed variables do not count in automatic substitution within the current
+  turn.  I.e. if there are several equally labeled variables in the dedicated
+  text block, only those on delay level 0 will be replaced together.  Delayed
+  ones, even if explicitely labeled, will always be skipped.
+
+==============================================================================
+VARIABLE SUBSTITUTION					  *vpars-substitution*
+
+Details on how VPars will replace a variable by its substition text were
+already given in the above discussion of the various VPars variable types
+(|vpars-variables|). To sum it up:
+
+SIMPLE VARIABLES				   *vpars-substitution-simple*
+
+<|label and default value|> ~
+
+Label:			"label and default value"
+Default value:		"label and default value"
+			Used as substitution text if the cursor was
+			found immediately right to the "<|" starting
+			delimiter.
+Substitution text:	All characters between the "<|" starting
+			delimiter and the current cursor position.
+
+EXPLICITELY LABELED VARIABLES			 *vpars-substitution-explicit*
+
+<|default value|:explicit label:|> ~
+
+Label:			":explicit label:"
+Default value:		"Default value"
+			Can be empty:	"<||:explicit label:|>"
+			Used as substitution text if the cursor was
+			found immediately right to the "<|" starting
+			delimiter.
+Substitution text:	All characters between the "<|" starting
+			delimiter and the current cursor position.
+
+SELECTING ALTERNATIVES			      *vpars-substitution-alternative*
+
+<|alt 1|alt 2| ... |alt n|> ~
+<|alt 1|alt 2| ... |alt n|:explicit label:|> ~
+
+Label:			none or ":explicit label:"
+Default value:		none (actually)
+			(In fact "alt 1", because the cursor is put there when
+			the variable is encounered.)
+Substitution text:	All characters between the bars surrounding the
+			current cursor position.
+			Can be empty:	"||"
+			The alternatives list ends at "|>", or "|:" if an
+			explicit label exists.
+
+------------------------------------------------------------------------------
+THE SUBSTITUTION CYCLE				    *vpars-substitution-cycle*
+
+Vparse basically works in one of two modes depending on whether a dedicated
+text block is being processed or VPars is called outside of such a block.
+
+
+WORKING MODES							 *vpars-modes*
+							   *vpars-normal-mode*
+- normal mode:~
+  Repeating turns through a dedicated text block (|vpars-text-block|)
+							   *vpars-global-mode*
+- global mode:~
+  Straight ahead search outside of a dedicated text block.
+
+The substitution cycle in repeating turns mode is one of the basic strengths
+of VPars.  It was introduced in the |vpars-variables-order-example|
+chapter.  In short:
+
+
+DEDICATED TEXT BLOCK				    *vpars-substitution-block*
+
+This consists of several text lines whose boundary lines are kept in two
+buffer local variables:
+
+b:StartInsert ~
+	Holds the line number where the dedicated text block starts.
+
+b:EndInsert ~
+	Holds the line number where the dedicated text block ends.
+
+Note:
+
+- These have to be externally defined before using VPars in repeating turns
+  mode, except when calling VPars_RepJumpBlock() (see:|vpars-functions|).
+
+- The "Insert" phrase in these names is historical.  It corresponds to the
+  originally intended VPars use---processing most recently inserted code
+  templates.
+
+
+DELAYED VARIABLES				  *vpars-substitution-delayed*
+
+In both modes VPars will conceptually process any variable it finds according
+to the number of "< ... >" brackets surrounding it.
+
+- The outermost "< ... >" brackets will be removed.
+- If there are any "< ... >" surrounding bracket pairs left, the variable will
+  be skipped and the next one in sequence searched.
+- Otherwise the variable will be processed according to the usual substitution
+  rules.
+
+More formally, the processing of any VPars variable in the current normal mode
+turn can be delayed by adding another level of "< ... >" brackets:
+
+immediade processing:~
+
+	delay level 0:	      <| ... |> ~
+
+delayed:~
+
+	delay level 1:	     <<| ... |>> ~
+	... ~
+	delay level n:	  <...<| ... |>...> ~
+	delay level n+1: <<...<| ... |>...>> ~
+
+See|vpars-delaying-variables|for more detail about delayed variable
+processing in both VPars working modes.
+
+
+THE BLOCK END CONDITION		     *vpars-block-end-condition* *vpars-atend*
+
+If in the current normal mode processing turn no more VPars variables were
+detected in the dedicated text block, this condition will be remembered in a
+block local variable:
+
+b:AtEndInsert~
+	Non-zero if the end of the dedicated text block has been ultimately
+	reached.
+
+By default, VPars will remain there even on successive <F3> keypresses.
+Processing will proceed only if the cursor was explicitely moved out of the
+block limits (or the block limits were reset by some external skript).
+
+This behaviour may be overridden by explicitely setting this global variable:
+
+g:VPars_SkipBlockend~
+	If non-zero causes <F3> to automatically search beyond the text block
+ 	end if no more variables are in there.
+ 	Defaults to 0, which causes the cursor to stop at the block end.
+
+------------------------------------------------------------------------------
+BATCH PROCESSING A SUBSTITUTION LIST    *vpars-batch* *vpars-substitution-list*
+
+VPars mainly concentrates on interactive variable substitution.  While
+undoubtedly useful this does not suffice as a basis for e.g. a really
+practicable template application.
+
+
+EXAMPLE							  *vpars-batch-example*
+
+Assume you want to inform some folks about your VPars experiences.  To do so
+you want to utilize VPars with some template like this: >
+
+					<|date|>
+	Dear <||Mr.|Mrs.|:sex:|><|name|>
+	do you know about<|value|> VPars?
+	Yours,
+
+Of course thic could be easily processed by VPars through repeated <F3>
+keypresses.  But assume further there is some data base containing for
+instance: >
+
+	"Mr.","Fatty McDull","exceptional"
+	"","Bill","very useful"
+
+Wouldn't it be useful to have this data automatically processed?
+
+There is an easy way in VParse to accomplish this.  Some template script might
+read a line from this data base, load the template into vim, mark the borders
+in b:StartInsert and b:EndInsert and then call the VPars_RepList() function
+like this ("\" is the Vim line continuation symbol): >
+
+	:call VPars_RepList( [["date", "May 3, 2006"],
+			   \  [":sex:","Mr. "],
+			   \  ["name","Fatty McDull"],
+			   \  ["value"," exceptional"]] )
+
+to automatically produce this letter: >
+
+
+					May 3, 2006
+	Dear Mr. Fatty McDull
+	do you know about exceptional VPars?
+	Yours,
+
+Or: >
+
+	:call VPars_RepList( [["date", "May 3, 2006"],
+			   \  [":sex:",""],
+			   \  ["name","Bill"],
+			   \  ["value",""]] )
+
+will result in: >
+
+					May 3, 2006
+	Dear Bill
+	do you know about VPars?
+	Yours,
+
+
+SYNTAX							  *vpars-batch-syntax*
+
+The VPars_RepList() function (for "replace list") provides some basic batch
+processing facilities.  It can be called from another script using this
+syntax (leaving out line continuation symbols):
+
+	VPars_RepList( [["label 1", "replacement 1"], ~
+			["label 2", "replacement 2"], ~
+			... ~
+			["label n", "replacement n"]] ) ~
+
+Called on a dedicated text block (|vpars-text-block|) this will replace any
+variable labeled "label 1" by "replacement 1", then "label 2" by "replacement
+2" and so on until "label n", which will be replaced by "replacement n".
+
+Note:
+
+- The VPars_RepList() function requires a dedicated text block.  I.e. the
+  calling script must ensure valid b:StartInsert and b:EndInsert delimiters
+  set prior to the call.
+
+- No action if the block delimiter marks b:StartInsert and b:EndInsert do not
+  exist or were not properly initialized yet.
+
+- If an explicetely labeled variable (|vpars-explicit-labels|) shall be
+  processed, the surrounding colons must be included in the label part (as
+  e.g. ":sex:" in the above examples).
+
+- Replacement occures just like in interactive mode.  This means in
+  particular, pre and post-processing hook functions (|vpars-hooks|), if
+  existing, will be regularly called.
+
+- After batch processing the listed VPars variables, any remaining variables
+  may be interactively processed as usual by calling the VPars_RepJump()
+  function (see:|vpars-functions|) and then repeatedly using the <F3>
+  continuation key.
+
+==============================================================================
+THE VPARS INTERFACE				 *vpars-api* *vpars-interface*
+
+VPars can be used strictly interactive by selecting the dedicated text block
+(|vpars-text-block|) and then repeatedly stepping through the variables in
+there, using the "next variable" key <F3>.
+
+On the other hand, to access the VPars functionality from other Vim scripts,
+VPars provides the following application programming interface (API).
+
+|vpars-globals|		Global variables
+|vpars-functions|	Functions
+|vpars-hooks|		Pre and post processing hooks
+|vpars-locals|		Block local variables
+
+------------------------------------------------------------------------------
+GLOBAL VARIABLES	*vpars-globals*
+
+g:vpars_vim~
+	Prevents duplicate loading.
+	Holds the version number if existent: major version number times 100
+	plus minor version number.
+
+g:VPars_NextKey~
+	Key to trigger the VPars_RepJump() function.
+	This key may be redefined any time by setting g:VPars_NextKey and then
+	calling VPars_Init() to re-initialize VPars.
+	Defaults to <F3>.
+
+g:VPars_Verbose~
+	Meant for testing. If nonzero, issue warning messages in some cases of
+	error.
+
+g:VPars_SkipBlockend~
+	If non-zero causes <F3> to automatically advance beyond the text block
+	end if no more variables are in there.
+	Defaults to 0, which causes the cursor to stop there. To advance in
+	this case, the cursor must explicitely be positioned outside the
+	dedicated text block.
+
+							  *vpars-hooks-enable*
+g:VPars_UseHooks~
+	Determines how hook functions (|vpars-hooks|) are to be considered.
+
+	Consists of a String composed of 'parse', 'pre' and/or 'post' in any
+	order:
+	- If it contains 'parse', VPars_PreParseHook() will be called whenever
+	  a variable is about to be parsed.
+	- If it contains 'pre', VPars_PreVarHook() will be called whenever a
+	  variable is about to be substituted.
+	- If it contains 'post', VPars_PostVarHook will be called after any
+	  variable substitution.
+
+	A missing g:VParse_UseVarHooks or any other value willcause no hook
+	functions be called at all.
+
+	May be set at any time before a VPars_NextVar(), VPars_RepJump(), or
+	VPars_RepJumpBlock() call.
+
+	No defaults.
+
+g:VPars_HookPrefix~
+	Holds the prefix an externally provided hook (|vpars-hooks|) function
+	will use.
+	Defaults to 'VPars'.
+
+------------------------------------------------------------------------------
+FUNCTIONS						     *vpars-functions*
+
+VPars_Init()~
+	(Re-)initialize some VPars environment and interface settings such as
+	the trigger key(default <F3>), etc.
+
+	Will be called at start-up, but can be used by other Vim scripts at
+	any time to set up a suiting VPars behavior.
+
+VPars_ResetVar()~
+	Used to initialize the buffer local variables.
+
+	Can be used (with caution) by other Vim scripts to force an empty
+	state of parsed variables.
+
+	Note:
+	- This does not affect the b:StartInsert and b:EndInsert boundary
+	  markers of the dedicated text block.
+
+VPars_NextVar( global )~
+	Find next variable, delimited by <|..|>
+
+	If <global> is zero, works between b:StartInsert and b:EndInsert lines
+	and will turn around to the beginning of the dedicated text block if
+	necessary (see:|vpars-substitution-cycle|). Stops at the end of the
+	b:EndInsert line, if there are more VPars variables found in this
+	dedicated text block.
+
+	If <global> is non-zero, and the cursor is outside the dedicated text
+	block, this function will search straight ahead up to the end of the
+	current buffer.
+
+	Returns:
+	 1 if another variable or a cursor mark was found
+	 0 if no more variables were found
+	-1 if a delayed variable had been skipped
+	-2 if an invalid variable was detected
+
+VPars_RepJump()~
+	Replaces the current variable and jumps to next one.
+
+	This function is triggered by the <F3> key in Vim normal or insert
+	modes.
+
+VPars_RepJumpBlock()~
+	Replaces the current variable and jump to next one in the currently
+	selected visual block.
+
+	This function is triggered by the <F3> key in Vim visual mode.
+
+	Note:
+	- Sets b:StartInsert and b:EndInsert to the visual block boundaries
+	  and resets b:AtEndInsert.
+
+VPars_RepList( list )~
+	Accepts an array of label-replacement string pairs of the form:
+
+	    [['label_1','replacement_1'], ... ,['label_n','replacement_n']]~
+
+	Scans the text between b:StartInsert and b:EndInsert for every given
+	variable with implicit or explicit 'label_i' and replaces it with the
+	corresponding 'replacement_i'.
+
+	Note:
+	- Explicit labels must be surrounded with ':...:' delimiters.
+	
+	- The function requires a valid dedicated text block, i.e. the
+	  b:StartInsert and b:EndInsert variables must be set prior to the
+	  call.
+
+	- No action if the block delimiter marks b:StartInsert and b:EndInsert
+	  do not exist or were not properly initialized yet.
+
+	- Processing the variables occurs exactly like in interactive mode.
+	  This means in particular that the usual variable hook functions
+	  (|vpars-hooks|) will be called if existent and enabled.
+
+	- The cursor will be put at the block start if there was a marked text
+	  block.  Otherwise its position will not change.
+
+------------------------------------------------------------------------------
+PRE AND POST PROCESSING HOOKS					 *vpars-hooks*
+
+A VPars hook function is an externally provided function which can be called
+from within VPars.  Figuratively spoken such a function "hooks" from the
+outside into the VPars script.  VPars will call such hook functions, if
+existing and enabled, in three circumstances:
+
+- immediately before parsing a variable,
+- before substituting a variable, and
+- after substituting a variable.
+
+That way an external script has enhanced control over what will happen to the
+variables, ranging from skipping the variable altogether, through redefinition
+according varying environmental needs before the variable is parsed, or
+forcing a certain substitution text, up to postprocessing the replaced value,
+e.g.  replacing some shorthand code by a lengthy text sequence or even another
+set of VPars variables.
+
+There are three hook functions possible, where "<prefix>" denotes a name
+prefix given in the g:VPars_HookPrefix global variable, or "VPars" by default.
+
+Note:
+
+- Each hook function runs in the current buffer context and will thus be able
+  to easily access the buffer local variables (|vpars-locals|).  Most of the
+  passed arguments are for convenience only.
+
+- The available hook functions can be individually enabled before calling
+  VPars by setting the g:VPars_UseHooks variable (see:|vpars-hooks-enable|).
+
+
+				  *vpars-hooks-preparse* *vpars-preparse-hook*
+
+<prefix>_PreParseHook( bufnr, line, varstart, varend )~
+	Pre Parse Variable Hook: Will be called immediately before a variable
+	is about to be parsed. The variable definition found in this position
+	me be altered in any way, even made invalid, deleted, or delayed, as
+	VPars still has no idea of it yet.
+
+	The variable to be parsed is located in buffer number <bufnr>, at line
+	number <line>, there extending between columns <varstart> and <varend>
+	(these are the outer <| ... |> margins).
+
+	Returns:
+	Zero to skip this parsing, else non-zero.
+
+	Note:
+	- Any change to the text buffer must be reflected in the variable
+	  properties (see:|vpars-properties|).
+
+		       *vpars-hook-pre-variable* *vpars-pre-substitution-hook*
+
+<prefix>_PreVarHook( bufnr, line, varstart, varend, label, subst, alt )~
+	Preprocess Variable Hook: Will be called before an actual variable
+	substitution is about to be done.
+
+	The variable to be substituted is located in buffer number <bufnr>, at
+	line number <line>, there extending between columns <varstart> and
+	<varend> (these are the outer <| ... |> margins).
+
+	The <label> argument will hold the variable label, and <subst> the
+	string to be put in its place, where <alt> will be non-zero if it was
+	a selection from the alternatives list.
+
+	Returns:
+	Zero to skip this substitution, else non-zero.
+
+		     *vpars-hook-post-variable* *vpars-post-substitution-hook*
+
+<prefix>_PostVarHook( bufnr, line, col, label, subst, alt )~
+	Postprocess Variable Hook: Will be called after every substitution,
+	but before the substituted text has been processed (e.g. actually have
+	been split into multiple lines along '<NL>' marks,
+	see:|vpars-substitution-text|).
+
+	The variable substituted recently is located in buffer number <bufnr>,
+	at line number <line>.  The substituted text starting at column <col>.
+	The <label> argument holds the label of the variable just substituted,
+	and <subst> the actual substitution string put in its place, with
+	<alt> being non-zero if it was a selection from an alternatives list.
+
+	Note:
+	- If the number of lines to be substituted ('<NL>' marks in <subst>)
+	  changes due to postprocessing, this must be reflected in the
+	  b:VEndLine buffer local variable (see:|vpars-properties|) prior to
+	  return.
+
+------------------------------------------------------------------------------
+BUFFER LOCAL VARIABLES		 *vpars-locals* *vpars-buffer-local-variables*
+
+VPars uses a number of variables locally to the currently edited buffer on
+which it was called. they keep some properties of the currently processed
+variable (|vpars-properties|) as well as information on the dedicated text
+block (|vpars-text-block|) VPars has to work on (|vpars-boundaries|).
+
+
+CURRENT VARIABLE PROPERTIES	*vpars-properties* *vpars-variable-properties*
+
+b:VStLine~
+	Holds the starting line number of this variable.
+	0 after calling VPars_ResetVar().
+
+b:VEndLine~
+	Holds the ending line number of this variable
+	0 after calling VPars_ResetVar().
+	
+	Note:
+	- This differs from b:VStLine only after multiline replacements.
+
+b:VSubstLines~
+	The number of lines actually substituted by this replacement.
+	This is used internally to adjust the boundaries of the dedicated text
+	block, VPars has to work on.
+	0 after calling VPars_ResetVar().
+
+b:VarStart~
+	Holds the start column of this variable (before '<|').
+	-1 after calling VPars_ResetVar().
+
+b:VarEnd~
+	Holds the end column of this variable (after '|>').
+	-1 after calling VPars_ResetVar().
+
+	Note:
+	- The b:VarStart and b:VarEnd column numbers are string indexes,
+	  starting at 0.
+
+b:ExpLabel~
+	Explicit label flag (see:|vpars-explicit-labels|):
+	Non-zero if this variable is explicitely labeled, otherwise 0.
+	0 after calling VPars_ResetVar().
+
+b:VarLabel~
+	The label of this variable.
+	"" after calling VPars_ResetVar().
+
+	Note:
+	- If the variable is explicitely labeled, this will hold the
+	  surrounding colons as well: ":explicit label:"
+
+b:VarSubst~
+	Holds the substitution text for this variable.
+	"" after calling VPars_ResetVar().
+	
+	Note:
+	- After parsing the variable (on call to a preprocessing hook) this is
+	  = the default value in VPars simple variables,
+	  = empty in VPars alternatives.
+
+	- After pressing <F3> (on call to a postprocessing hook) this is
+	  = the user entered substitution text for VPars simple variables
+	  = the selected alternative text in VPars alternatives.
+
+b:SubstEmpty~
+	Default text flag for explicitely labeled variables:
+	1 if the initial substitution value in an explicitely labeled variable
+	was empty, otherwise 0.
+	0 after calling VPars_ResetVar().
+
+b:AltSubst~
+	Holds an array of substitution values in VPars alternatives.
+	[] after calling VPars_ResetVar().
+
+	Note:
+	- b:VarSubst is empty after parsing this variable.
+
+b:AltCol~
+	Holds an array of substitution column boundaries in VPars alternatives.
+	[] after calling VPars_ResetVar().
+
+	Note:
+	- The numbers are relative to the start of the value field.
+
+	- If there are no alternatives given, b:AltCol will be empty. This is
+	  used internally to discriminate between VPars simple variables and
+	  VPars alternatives.
+
+
+TEXT BLOCK BOUNDARIES	      *vpars-boundaries* *vpars-text-block-boundaries*
+
+These buffer local variables have to be externally defined before calling
+VPars, except when calling VPars_RepJumpBlock() (see:|vpars-functions|), but
+may be altered elsewhere in this script.
+
+The naming is somewhat historical, denoting the last inserted text template
+block.
+
+Note:
+- These variables will not be affected by the VPars_ResetVar() function.
+
+b:StartInsert~
+	Holds the start line number of the dedicated text block.
+	0 if no valid text block present.
+
+b:EndInsert~
+	Holds the end line number of the dedicated text block.
+	0 if no valid text block present.
+
+b:AtEndInsert~
+	Flag to signal if VPars has processed all variables in this dedicated
+	text block:
+	Non-zero if the end of the text block has been reached, 0 otherwise.
+
+
+OTHER BUFFER LOCALS				   *vpars-other-buffer-locals*
+
+b:VPars_Msg~
+	Holds a message text describing most recently encountered error, if
+	any. This is the text, VPars will output to the Vim messages area if
+	g:VPars_Verbose was set to non-zero.
+	"" after calling VPars_ResetVar().
+
+==============================================================================
+INSTALLING AND CUSTOMIZING			 *vpars-install-and-customize*
+
+VPars is currently tested in Linux environments only.
+
+------------------------------------------------------------------------------
+INSTALLING VPARS					    *vpars-installing*
+
+To install VPars, copy the vpars.zip file into the ~/.vim directory or
+equivalent and unzip it there. This will install vpars.vim into the plugins
+subdirectory and vpars.txt into the doc subdirectory.
+
+To enable access to this vpars.txt documentation (you currently read) star Vim
+and issue >
+
+	:helptags ~/.vim/doc
+
+vpars.txt should then be listed in the LOCAL ADDITIONS section of the Vim main
+help (issue :help, and the scroll down to the end).
+
+To access VPars help >
+
+	:help vpars
+
+will display the CONTENTS section of this help, and >
+
+	:help vpars-index
+
+will get you to the INDEX section (which collects all VPars help targets).
+
+------------------------------------------------------------------------------
+REDEFINING THE TRIGGER KEY		       *vpars-key* *vpars-redefine-F3*
+
+By default, VPars uses the <F3> function key to interactivey substitute a
+variable and find the next.  This key can be redefined at any time by setting
+the g:VPars_NextKey variable and then calling the VPars_Init() function.
+
+Example:
+	To use the CTRL-J (or: <NL>) key instead of <F3> issue the following
+	on the Vim command line: >
+
+		:let g:VPars_NextKey="<C-J>"
+		:call VPars_Init()
+
+VPars will unmap the previously used trigger key and map the key defined in
+g:VPars_NextKey to the VPars_RepJump() and VPars_RepJumpBlock() functions.
+
+To get the default back unlet thethe g:VPars_NextKey variable and then call
+VPars_Init(): >
+
+		:unlet g:VPars_NextKey
+		:call VPars_Init()
+
+Will unmap any trigger key redefintion and map <F3> back to VPars_RepJump()
+and VPars_RepJumpBlock().
+
+------------------------------------------------------------------------------
+ADVANCING OVER THE BLOCK END				    *vpars-skip-atend*
+
+VPars will by default stop at the end of the dedicated text block once all
+variables have been processed in there.  To process any other VPars variable
+beyond this position, the user must explicitely put the cursor of the
+dedicated text block and the issue <F3> again.  This behavior can be changed
+by setting the g:VPars_SkipBlockend to a non-zero value: >
+
+	:let g:VPars_SkipBlockend=1
+
+will cause VPars to find some VPars variable beyond the dedicated text after
+all variable had been processed in there without the need to manually
+reposition the cursor. >
+
+	:let g:VPars_SkipBlockend=0
+or >
+	:unlet g:VPars_SkipBlockend
+
+will switch back to the default behaviour.
+
+Note:
+
+- VPars will stop at the end of the dedicated text block in any case to signal
+  this condition to the user. By default it will however remain there through
+  subsequent <F3> keypresses, while the altered behavior will cause <F3> to
+  search further.
+
+- Once the dedicated text block has been left either manually or after
+  changing the default behavior, The b:StartInsert and b:EndInsert variables
+  will both be reset to 0, thereby invalidating the dedicated text block.
+
+------------------------------------------------------------------------------
+USING VERBOSE MODE					       *vpars-verbose*
+
+VPars can detect several error conditions in the dedicated text block.
+Usually they will go quietly, but for debugging purposes VPars can issue
+warning messages in the Vim messages area.  This verbose mode is enabled
+through the g:VPars_Verbose variable. >
+
+	:let g:VPars_Verbose=1
+
+(or any other non-zero value) will cause error messages be displayed. >
+
+	:let g:VPars_Verbose=0
+or >
+	:unlet g:VPars_Verbose
+
+will cause the default quiet behaviour again.
+
+Note:
+
+- This verbose mode is not perfect as Vim wil use the same messages area for
+  other purposes as well, thereby in some cases overwriting the warning before
+  it might have been noticed. The Vim >
+
+	:messages
+~
+  command will however redisplay the most recently issued warnings again.
+
+==============================================================================
+THANKS								*vpars-thanks*
+
+VPars is based on quite a lot of ideas found elsewhere. Most notably I would
+like to thank:
+
+Felix Ingram~
+	for developing the snippetsEmu.vim script from which the basic ideas
+	for a powerful, yet basically simple variable substitution mechanism
+	came.
+
+Fritz Mehner~
+	for the csupport.vim script which served as a powerful source of
+	concepts and as testbed as well to further develop the VPars variable
+	substitution mechanisms up to the current state.
+
+==============================================================================
+INDEX								 *vpars-index*
+
+|vpars|
+
+|vpars-alternatives|			|vpars-alternatives-altered|
+|vpars-alternatives-delimiter|		|vpars-alternatives-empty|
+|vpars-alternatives-escaped-bars|	|vpars-alternatives-example|
+|vpars-alternatives-non-repeating|	|vpars-alternatives-restrictions|
+|vpars-alternatives-syntax|		|vpars-api|
+|vpars-atend|				|vpars-automatic-substitution|
+
+|vpars-basic|				|vpars-batch|
+|vpars-batch-example|			|vpars-batch-syntax|
+|vpars-block-end-condition|		|vpars-boundaries|
+|vpars-buffer-local-variables|
+
+|vpars-commons|				|vpars-contents|
+|vpars-cursor|				|vpars-cursor-in-delimiters|
+|vpars-cursor-role|
+
+|vpars-dedicated-text|			|vpars-default|
+|vpars-default-substitution|		|vpars-defininitions|
+|vpars-delaying-variables|		|vpars-delete|
+|vpars-delimiters|
+
+|vpars-empty-alternative|		|vpars-empty-substitution|
+|vpars-example|				|vpars-explicit-colons|
+|vpars-explicit-labels|			|vpars-explicit-reparse|
+
+|vpars-functions|
+
+|vpars-global-mode|			|vpars-globals|
+
+|vpars-hook-post-variable|		|vpars-hook-pre-variable|
+|vpars-hooks|				|vpars-hooks-enable|
+|vpars-hooks-preparse|			|vpars-install-and-customize|
+
+|vpars-installing|			|vpars-interface|
+|vpars-intro|				|vpars-intro-example|
+
+|vpars-key|
+
+|vpars-label|				|vpars-left-delimiter|
+|vpars-left-explicit-label|		|vpars-locals|
+
+|vpars-modes|				|vpars-multiple-lines|
+
+|vpars-NL-mark|				|vpars-normal-mode|
+
+|vpars-other-buffer-locals|
+
+|vpars-post-substitution-hook|		|vpars-pre-substitution-hook|
+|vpars-precedence-of-explicit-labels|	|vpars-preparse-hook|
+|vpars-principles|			|vpars-properties|
+|vpars-redefine-F3|			|vpars-remove-simple-variable|
+|vpars-replace-all-simple-vars|		|vpars-restrictions|
+|vpars-right-delimiter|			|vpars-right-explicit-label|
+|vpars-role-of-the-cursor|
+
+|vpars-simple-var-delete|		|vpars-simple-variables|
+|vpars-skip-atend|			|vpars-structure|
+|vpars-substitute-multilines|		|vpars-substitution|
+|vpars-substitution-alternative|	|vpars-substitution-block|
+|vpars-substitution-cycle|		|vpars-substitution-delayed|
+|vpars-substitution-explicit|		|vpars-substitution-list|
+|vpars-substitution-simple|		|vpars-substitution-text|
+
+|vpars-terms|				|vpars-text-block|
+|vpars-text-block-boundaries|		|vpars-thanks|
+|vpars-types|
+
+|vpars-variable-properties|		|vpars-variables|
+|vpars-variables-order|			|vpars-variables-order-delay|
+|vpars-variables-order-example|		|vpars-verbose|
+
+==============================================================================
+  vim:enc=utf-8:tw=78:ts=8:ft=help:norl:

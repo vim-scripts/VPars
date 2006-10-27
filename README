@@ -1,0 +1,81 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1696
+
+PURPOSE
+
+Parameter substitution functions to be used in text fragments.
+
+Designed as kernel to yet another template processing script, but may as well be used stand-alone or from another Vim script.
+
+May be used interactively or in batch processing mode, both called from another Vim script (e.g. a templates manager) or directly by the user on a visually selected text block or by calling functions from the command line.
+
+
+CONCEPTUAL OVERVIEW
+
+These are basic capabilities only. But VPars is extensively documented in the accompanying Vim help text. Look there for more detail and for the programming interface.
+
+VPars basically works on a specially selected text block. It finds variables in there, waits for the user to enter replacement text and substitutes this upon a simple keypress (<F3> by default, but may be redefined at any time). Then the next variable in sequence is found, etc.
+
+There are built-in mechanisms which allow to skip or alter variables in the course of processing, so VPars will finally wrap around to the beginning of the text block and reprocess it until all variables have been handled.
+
+
+VARIABLES
+
+Each variable is assumed to have one of the following formats.
+
+CURSOR
+<|>
+is a cursor mark which will simply be removed and the cursor be positioned there.
+
+SIMPLE VARIABLES
+<|value|>
+where 'value' denotes both the variable label and the default value.
+
+<|value|:label:|>
+where 'value' denotes the (possible empty) default value, and 'label' the explicit label of this variable.
+
+RESTRICTIONS
+There are almost no restrictions on the default value and the label as well, except that they must fit in the same line, and cannot contain another VPars variable. The user can even enter multiple lines as substitution text.
+
+HOW VARIABLES GET SUBSTITUTED
+Pressing <F3> with the cursor inside the 'value' field of a simple variable will cause this and all equally named variables be replaced by the following text.
+    * The current variable will be replaced by the text extending from the left '<|' delimiter up to the current cursor position.
+    * If the cursor is positioned immediately after the left delimiter, the variable will be replaced by the given 'default' value.
+    * Any text to the right of the cursor does not count.
+      (Exception: If the variable bears an explicit ':label:' and was initially empty (of the form <||:label:|>), any text between the bars will be taken as replacement, independent of where the cursor was positioned.)
+
+IMPLICIT AUTOMATIC SUBSTITUTION
+Any equally labeled variable within the currently marked text block will automatically receive the same replacement text, except delayed ones (see below). 
+
+ALTERNATIVES
+<|alt_1|alt_2|..|alt_n|>
+where 'alt_1'..'alt_n' denote given alternative substitution values of which the one bearing the cursor will replace this one variable.
+
+<|alt_1|alt_2|..|alt_n|:label:|>
+same, but explicitely labeled. The selected substitution will replace any variable with this name.
+
+DELAYED VARIABLES
+There is a primitive means of defining another order to visit the variables and/or cursor marks within the selected text block. This is based on the VPars method of repeatedly processing the given text block until no variables are left over.
+
+If the variable mark found is surrounded by another level of '< .. >' delimiters, this extra level will be removed and the variable skipped in this turn.
+
+This allows delaying the variable substitution until others are available, or to position a cursor to a mark located near the beginning of the most recently inserted text after all variable substitutions were done.
+
+
+EXPLICITELY LABELED VARIABLE SUBSTITUTION
+If there is an explicit ':label:' given, all variables bearing this label will be replaced with the substitution of the first occurrence found. This occurs independent of the form the other variables. Especially will the replacement text of simple variables replace alternative variables bearing this name and vice versa.
+
+
+TEXT BOUNDARIES
+Text replacement will occur upon pressing <F3>. As long as there are variables in this block, <F3> will wrap around from the its end to the marked beginning line. This mechanism allows the handling of delayed variables.
+    * The text boundaries are marked linewise.
+    * Usually, the text bundaries will be marked by some calling function.
+    * The user can expressely select a visual block, which will then repeatedly be parsed for variables upon pressing <F3>.
+    * When there is no text block marked or there are no more variables found, the script switches to 'global mode', where the next variable from cursor to the end of the buffer will be found, if any. This global mode is strictly linear, no wrapping around will happen. 
+
+
+BATCH PROCESSING
+There is a VPars function implemented which allows batch replacement of any variable in the selected text block before interactive mode is entered.
+
+
+PRE- AND POSTPROCESSING VARIABLES
+Calling scripts may provide so-called hook functions which provide ways to process a VPars variable before and after substitution. See the vpars.txt help for more.

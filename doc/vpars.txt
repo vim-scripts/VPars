@@ -1,7 +1,7 @@
-*vpars.txt*	VPars: Vim Parameter Substitution      Last Change: 2006-10-27
+*vpars.txt*	VPars: Vim Parameter Substitution      Last Change: 2006-11-10
 
 			      VPars User Manual~
-				 Version 0.1~
+				 Version 1.1~
 
 		       Copyright (c) 2006 by Bernd Pol
 			    <bernd.pol@online.de>
@@ -48,6 +48,8 @@ CONTENTS                                              *vpars* *vpars-contents*
 |vpars-substitution-block|		Dedicated text block
 |vpars-substitution-delayed|		Delayed variables
 |vpars-atend|				The block end condition
+|vpars-jump-end|			Jumping to the end of the text block
+|vpars-jump-begin|			Jumping to the beginning of the text block
 |vpars-batch|			    Batch processing a substitution list
 |vpars-batch-example|			Example
 |vpars-batch-syntax|			Syntax
@@ -63,6 +65,7 @@ CONTENTS                                              *vpars* *vpars-contents*
 |vpars-install-and-customize|	Installing and customizing
 |vpars-installing|		    Installing VPars
 |vpars-key|			    Redefining the trigger key (default: <F3>)
+|vpars-alternate-keys|		    Alternate shortcut keys
 |vpars-skip-atend|		    Advancing over the block end
 |vpars-verbose|			    Using verbose mode
 
@@ -73,7 +76,7 @@ CONTENTS                                              *vpars* *vpars-contents*
 WHAT IS VPARS							 *vpars-intro*
 
 "VPars" literally means "Vim Parameter Substitution" and as such forms the
-basis of yet-another-snippets-mechanism. It allows to substitute certain
+basis of yet another template manager. It allows to substitute certain
 preformatted variables in a given text block either interactively or in batch
 mode.
 
@@ -1018,6 +1021,49 @@ g:VPars_SkipBlockend~
  	Defaults to 0, which causes the cursor to stop at the block end.
 
 ------------------------------------------------------------------------------
+
+JUMPING TO THE END OF THE TEXT BLOCK			      *vpars-jump-end*
+
+There are occasions where one would want to skip the processing of the VPars
+variables in the dedicated text block altogether.  VPars provides function to
+do so: >
+
+	VPars_JumpEnd()
+		Causes the cursor be put at the end of the currently defined
+		dedicated text block (the end of the b:EndInsert line) and
+		sets b:AtEndInsert to 1, thus disabling any processing while
+		keeping the b:StartInsert and b:EndInsert boundaries intact.
+
+This function is by default bound to the >
+	,je 
+shortcut.  This mapping can be redefined, see |vpars-shortcut-keys|.
+
+Jumping prematurely to the end of the most recently inserted text block would
+i.e. allow a template script to chain different text blocks together and have
+them processed afterwards in one single piece.
+
+------------------------------------------------------------------------------
+JUMPING TO THE BEGINNING OF THE TEXT BLOCK		    *vpars-jump-begin*
+
+The effect of prematurely jumping to the end of the dedicated text block can
+be undone by another VPars function: >
+
+	VPars_JumpBegin()
+		This puts the cursor at the beginning of the currently defined
+		dedicated text block and resets b:AtEndInsert, thus
+		re-enabling subsequent VPars variables searches.
+
+This function is by default bound to the >
+	,jb 
+shortcut.  This mapping can be redefined, see |vpars-shortcut-keys|.
+
+Besides undoing the search lock set up by a premature block end jump there are
+other benefits in prematurely jumping to the text block start.  One main
+effect is in that it allows the user or another script to somewhat circumvent
+the given variables processing order by simply forcing another scan before the
+block end had been reached.
+
+------------------------------------------------------------------------------
 BATCH PROCESSING A SUBSTITUTION LIST    *vpars-batch* *vpars-substitution-list*
 
 VPars mainly concentrates on interactive variable substitution.  While
@@ -1143,6 +1189,31 @@ g:VPars_NextKey~
 	calling VPars_Init() to re-initialize VPars.
 	Defaults to <F3>.
 
+g:VPars_AltNext~
+	Alternate shortcut to trigger the VPars_RepJump() function.
+	This shortcut may be redefined any time by setting g:VPars_AltNext and
+	then calling VPars_Init() to re-initialize VPars.
+	Setting g:VPars_AltNext to an empty string in this case will disable
+	the shortcut.
+	Defaults to ',jj'.
+
+g:VPars_AltBegin~
+	Alternate shortcut to trigger the VPars_JumpBegin() function.
+	This shortcut may be redefined any time by setting g:VPars_AltBegin and
+	then calling VPars_Init() to re-initialize VPars.
+	Setting g:VPars_AltBegin to an empty string in this case will disable
+	the shortcut.
+	Defaults to ',jb'.
+
+g:VPars_AltEnd~
+	Alternate shortcut to trigger the VPars_JumpEnd() function.
+	This shortcut may be redefined any time by setting g:VPars_AltEnd and
+	then calling VPars_Init() to re-initialize VPars.
+	Setting g:VPars_AltEnd to an empty string in this case will disable
+	the shortcut.
+	Defaults to ',je'.
+
+
 g:VPars_Verbose~
 	Meant for testing. If nonzero, issue warning messages in some cases of
 	error.
@@ -1260,6 +1331,23 @@ VPars_RepList( list )~
 
 	- The cursor will be put at the block start if there was a marked text
 	  block.  Otherwise its position will not change.
+
+VPars_JumpEnd()~
+	Causes the cursor be put at the end of the currently defined
+	dedicated text block (the end of the b:EndInsert line) and
+	sets b:AtEndInsert to 1, thus disabling any processing while
+	keeping the b:StartInsert and b:EndInsert boundaries intact.
+
+	Note:
+	- This function is by default bound to the ',je' shortcut.
+
+VPars_JumpBegin()~
+	This puts the cursor at the beginning of the currently defined
+	dedicated text block and resets b:AtEndInsert, thus
+	re-enabling subsequent VPars variables searches.
+
+	Note:
+	- This function is by default bound to the ',jb' shortcut.
 
 ------------------------------------------------------------------------------
 PRE AND POST PROCESSING HOOKS					 *vpars-hooks*
@@ -1486,8 +1574,8 @@ To install VPars, copy the vpars.zip file into the ~/.vim directory or
 equivalent and unzip it there. This will install vpars.vim into the plugins
 subdirectory and vpars.txt into the doc subdirectory.
 
-To enable access to this vpars.txt documentation (you currently read) star Vim
-and issue >
+To enable access to this vpars.txt documentation (you currently read) start
+Vim and issue >
 
 	:helptags ~/.vim/doc
 
@@ -1529,6 +1617,34 @@ VPars_Init(): >
 
 Will unmap any trigger key redefintion and map <F3> back to VPars_RepJump()
 and VPars_RepJumpBlock().
+
+------------------------------------------------------------------------------
+ALTERNATE SHORTCUT KEYS		  *vpars-alternate-keys* *vpars-shortcut-keys*
+
+VPars does by default provide a set of alternate shortcut keys which are
+initially mapped as such: >
+
+	,jj	triggers the next variable search (like <F3>)
+	,je	jumps to the end of the dedicated text block
+		and disables further seaches, even if there are
+		some variables still unprocessed
+	,jb	jumps to the beginning of the dedicated text block
+		and re-enables the search
+
+The user or some other script can remap or even unmap these shortcuts by means
+of setting some global variables and subsequently re-initializing VPars
+through a VPars_Init() call: >
+
+	g:VPars_AltNext		remaps the ',jj' shortcut
+	g:VPars_AltBegin	remaps the ',jb' shortcut
+	g:VPars_AltEnd		remaps the ',je' shortcut
+
+Setting any of these globals to an empty string will completely unmap the
+shortcut, thus making this alternate function access unavailable.
+
+Note:
+- VPars will always unmap the previous mapping before mapping the function
+  call to the new key definition.
 
 ------------------------------------------------------------------------------
 ADVANCING OVER THE BLOCK END				    *vpars-skip-atend*
@@ -1611,6 +1727,7 @@ INDEX								 *vpars-index*
 
 |vpars|
 
+|vpars-alternate-keys|
 |vpars-alternatives|			|vpars-alternatives-altered|
 |vpars-alternatives-delimiter|		|vpars-alternatives-empty|
 |vpars-alternatives-escaped-bars|	|vpars-alternatives-example|
@@ -1647,6 +1764,8 @@ INDEX								 *vpars-index*
 |vpars-installing|			|vpars-interface|
 |vpars-intro|				|vpars-intro-example|
 
+|vpars-jump-begin|			|vpars-jump-end|
+
 |vpars-key|
 
 |vpars-label|				|vpars-left-delimiter|
@@ -1666,6 +1785,7 @@ INDEX								 *vpars-index*
 |vpars-right-delimiter|			|vpars-right-explicit-label|
 |vpars-role-of-the-cursor|
 
+|vpars-shortcut-keys|
 |vpars-simple-var-delete|		|vpars-simple-variables|
 |vpars-skip-atend|			|vpars-structure|
 |vpars-substitute-multilines|		|vpars-substitution|

@@ -7,9 +7,9 @@
 "       Author: Bernd Pol
 "        Email: bernd-pol@online.de
 "
-"      Version: 0.1
+"      Version: 1.1
 "      Created: 2006-09-19
-"Last Revision: 2006-09-27
+"Last Revision: 2006-11-10
 "
 "      License: Copyright (c) 2006, Bernd Pol
 "               This program is free software; you can redistribute it and/or
@@ -166,6 +166,18 @@
 " g:VPars_NextKey
 " 	Key to trigger the VPars_RepJump() function. Defaults to <F3>.
 "
+" g:VPars_AltNext
+" 	Alternate shortcut to trigger the VPars_RepJump() function.
+" 	Defaults to ',jj'.
+"
+" g:VPars_AltBegin
+" 	Alternate shortcut to trigger the VPars_JumpBegin() function.
+" 	Defaults to ',jb'.
+"
+" g:VPars_AltEnd
+" 	Alternate shortcut to trigger the VPars_JumpEnd() function.
+" 	Defaults to ',je'.
+"
 " g:VPars_Verbose
 " 	If nonzero, issue warning messages in some cases of error.
 "
@@ -205,7 +217,7 @@
 "
 " VPars_NextVar( glob )
 " 	Find next variable, delimited by <|..|>
-" 	If <glob> is non-zero, works between b:StartInsert and b:EndInsert only
+" 	If <glob> is zero, works between b:StartInsert and b:EndInsert only
 " 	otherwise finds the next variable available in the current buffer.
 " 	Returns:
 "	 1 if another variable or a cursor mark was found
@@ -223,7 +235,7 @@
 " 	Note:
 " 	Sets b:StartInsert and b:EndInsert to the visual block boundaries and
 " 	resets b:AtEndInsert.
-" 
+"
 " VPars_RepList( list )
 " 	Accepts an array of label-replacement string pairs of the form:
 " 	    [['label_1' 'replacement_1'] ... ['label_n' 'replacement_n']]
@@ -231,7 +243,15 @@
 " 	variable with implicit or explicit 'label_i' and replaces it with the
 " 	corresponding 'replacement_i'.
 " 	Note: Explicit labels must be surrounded with ':...:' delimiters.
-" 
+"
+" VPars_JumpBegin()
+" 	Puts the cursor at the beginning of the dedicated text block and resets
+" 	AtEndInsert.
+"
+" VPars_JumpEnd()
+" 	Puts the cursor at the end of the dedicated text block and flags
+" 	AtEndInsert.
+"
 " === External Functions ======================================================
 "
 " Pre And Post Processing Variable Hook Functions:
@@ -331,7 +351,9 @@ if v:version < 700
     finish
 endif
 "
-let g:vpars_vim = 001
+" We keep the version number here for external reference.
+" This is major_version * 100 + minor_version:
+let g:vpars_vim = 101
 
 " Load initialization file along the runtimepath:
 runtime vparsrc.vim
@@ -382,6 +404,58 @@ endif
 " FIXME: This does not work in replace mode!
 "
 :exe "inoremap <silent> ".s:NextKey." x<Esc>:call VPars_RepJump(1)<Esc>a"
+
+" --- Alternate Shortcut Mappings ---------------------------------------------
+
+let s:AltNext = ",jj"
+if exists( "g:VPars_AltNext" )
+    let s:AltNext = g:VPars_AltNext
+endif
+
+let s:AltBegin = ",jb"
+if exists( "g:VPars_AltBegin" )
+    let s:AltBegin = g:VPars_AltBegin
+endif
+
+let s:AltEnd = ",je"
+if exists( "g:VPars_AltEnd" )
+    let s:AltEnd = g:VPars_AltEnd
+endif
+
+if s:AltNext != ""
+    :exe "nnoremap <silent> ".s:AltNext."       :call VPars_RepJump(0)<Esc>a"
+    :exe "vnoremap <silent> ".s:AltNext."  <Esc>:call VPars_RepJumpBlock()<Esc><Esc>a"
+    :exe "inoremap <silent> ".s:AltNext." x<Esc>:call VPars_RepJump(1)<Esc>a"
+    let s:OldAltNext = s:AltNext
+else
+    if exists( "s:OldAltNext" ) && s:OldAltNext != ""
+	exe "nunmap ".s:OldAltNext
+	exe "vunmap ".s:OldAltNext
+	exe "iunmap ".s:OldAltNext
+    endif
+endif
+
+if s:AltBegin != ""
+    :exe "nnoremap <silent> ".s:AltBegin."      :call VPars_JumpBegin()<Esc>a"
+    :exe "inoremap <silent> ".s:AltBegin." <Esc>:call VPars_JumpBegin()<Esc>a"
+    let s:OldAltBegin = s:AltBegin
+else
+    if exists( "s:OldAltBegin" ) && s:OldAltBegin != ""
+	exe "nunmap ".s:OldAltBegin
+	exe "iunmap ".s:OldAltBegin
+    endif
+endif
+
+if s:AltEnd != ""
+    :exe "nnoremap <silent> ".s:AltEnd."      :call VPars_JumpEnd()<Esc>a"
+    :exe "inoremap <silent> ".s:AltEnd." <Esc>:call VPars_JumpEnd()<Esc>a"
+    let s:OldAltEnd = s:AltEnd
+else
+    if exists( "s:OldAltEnd" ) && s:OldAltEnd != ""
+	exe "nunmap ".s:OldAltEnd
+	exe "iunmap ".s:OldAltEnd
+    endif
+endif
 
 endfunction
 
@@ -1277,6 +1351,12 @@ function VPars_RepJump( insmode )
 
     call s:AdjustLines()
     if s:CursorInBlock()
+	" Do nothing if at end.
+	if exists( "b:AtEndInsert" ) && b:AtEndInsert
+	    return
+	endif
+
+	" Else check whether we are in a variable.
 	let inVar = s:CursorInVar()
 	if inVar == 1		" in the substitution field
 	    call s:ReplVar(1)
@@ -1323,6 +1403,35 @@ function VPars_RepJumpBlock()
     let b:AtEndInsert = 0
     call cursor( b:StartInsert, 1 )
     call VPars_RepJump( 0 )
+endfunction
+
+"------------------------------------------------------------------------------
+" Jump To End:
+"
+" Puts the cursor at the end of the dedicated text block and flags AtEndInsert.
+"------------------------------------------------------------------------------
+"
+function VPars_JumpEnd()
+    if b:StartInsert == 0 || b:EndInsert == 0
+	return
+    endif
+    call cursor( b:EndInsert, 999 )
+    let b:AtEndInsert = 1
+endfunction
+
+"------------------------------------------------------------------------------
+" Jump To Beginning:
+"
+" Puts the cursor at the beginning of the dedicated text block and resets
+" AtEndInsert.
+"------------------------------------------------------------------------------
+"
+function VPars_JumpBegin()
+    if b:StartInsert == 0 || b:EndInsert == 0
+	return
+    endif
+    call cursor( b:StartInsert, 1 )
+    let b:AtEndInsert = 0
 endfunction
 
 "=== Body Actions =============================================================

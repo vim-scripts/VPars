@@ -1,4 +1,4 @@
-"##############################################################################
+"==============================================================================
 "
 "     Filename:	vpars.vim
 "
@@ -7,9 +7,9 @@
 "       Author: Bernd Pol
 "        Email: bernd-pol@online.de
 "
-"      Version: 1.1
+"      Version: 1.2
 "      Created: 2006-09-19
-"Last Revision: 2006-11-10
+"Last Revision: 2006-11-23
 "
 "      License: Copyright (c) 2006, Bernd Pol
 "               This program is free software; you can redistribute it and/or
@@ -30,7 +30,8 @@
 "       	develop those variable substitution mechanisms up to the
 "       	current state.
 "
-"  Description: Parameter substitution functions to be used in text fragments.
+"  Description: 							   {{{2
+"  		Parameter substitution functions to be used in text fragments.
 "               Repeatedly finds and replaces variables within given boundaries
 "               upon a simple keypress (<F3> by default).
 "               Each variable is assumed to have one of these forms:
@@ -137,7 +138,10 @@
 "                 be found, if any. This global mode is only linear, no
 "                 wrapping around will happen.
 "
-"##############################################################################
+"=== TODO Stuff ==========================================================={{{2
+"
+" TODO:	Escape brackets so the variable will not get deleted.:
+" 	<.<|xxx|>.> (one dot optional) then results in <yyy>
 "
 " TODO: Allow VPars variables in substitution texts.
 "
@@ -150,13 +154,15 @@
 "	 (will sometimes substitute whole lines at the wrong place.)
 "	 Same behaviour if b:AtEndInsert was externally forced to 1.
 "
-"##############################################################################
+"==============================================================================
 
 "==============================================================================
-"                                   Interface
+"                                   Interface				   {{{1
 "==============================================================================
 "
-" === Global Variables ========================================================
+"------------------------------------------------------------------------------
+" Global Variables:							   {{{2
+"------------------------------------------------------------------------------
 "
 " g:vpars_vim
 " 	Prevents duplicate loading.
@@ -168,15 +174,23 @@
 "
 " g:VPars_AltNext
 " 	Alternate shortcut to trigger the VPars_RepJump() function.
-" 	Defaults to ',jj'.
+" 	Defaults to 'jj'.
 "
 " g:VPars_AltBegin
 " 	Alternate shortcut to trigger the VPars_JumpBegin() function.
-" 	Defaults to ',jb'.
+" 	Defaults to 'jb'.
 "
 " g:VPars_AltEnd
 " 	Alternate shortcut to trigger the VPars_JumpEnd() function.
-" 	Defaults to ',je'.
+" 	Defaults to 'je'.
+"
+" g:VPars_AltShow
+" 	Shortcut to trigger the VPars_ShowBlock() function.
+" 	Defaults to 'jo'
+"
+" g:VPars_AltInv
+" 	Shortcut to trigger the VPars_InvalidateBlock() function.
+" 	Defaults to 'ji'.
 "
 " g:VPars_Verbose
 " 	If nonzero, issue warning messages in some cases of error.
@@ -206,7 +220,9 @@
 " 	Holds the prefix the externally provided hook functions will use.
 " 	Defaults to 'VPars'.
 "
-" === Functions ===============================================================
+"------------------------------------------------------------------------------
+" Functions:								   {{{2
+"------------------------------------------------------------------------------
 "
 " VPars_Init()
 " 	(Re-)initialize some VPars environment and interface settings such as
@@ -214,6 +230,19 @@
 "
 " VPars_ResetVar()
 " 	Initialize some buffer local variables.
+"
+" VPars_SetupMenu( menuLeader, menuLevel )
+" 	Makes some VPars functions via a menu under the caller submitted
+" 	<menuLeader> at the <menuLevel> position.
+" 
+" VPars_DisableMenu( menuLeader )
+" 	Disables all VPars menu entries.
+"
+" VPars_EnableMenu( menuLeader )
+" 	Enables all VPars menu entries.
+"
+" VPars_RemoveMenu( menuLeader )
+" 	Removes the whole VPars menu.
 "
 " VPars_NextVar( glob )
 " 	Find next variable, delimited by <|..|>
@@ -224,7 +253,6 @@
 "	 0 if no more variables were found
 "	-1 if a delayed variable had been skipped
 "	-2 if an invalid variable was detected
-" 	
 "
 " VPars_RepJump()
 "	Replace current variable and jump to next one.
@@ -252,7 +280,16 @@
 " 	Puts the cursor at the end of the dedicated text block and flags
 " 	AtEndInsert.
 "
-" === External Functions ======================================================
+" VPars_ShowBlock()
+" 	Visually selects the lines between b:StartInsert and b:EndInsert.
+" 
+" VPars_InvalidateBlock()
+"	Resets the b:StartInsert, b:EndInsert boundaries b:AtEndInsert, thus
+"	invalidating the whole dedicated text block.
+"
+"------------------------------------------------------------------------------
+" External Functions:							   {{{2
+"------------------------------------------------------------------------------
 "
 " Pre And Post Processing Variable Hook Functions:
 " There may be functions (e.g. in templates processing) which will allow some
@@ -305,9 +342,11 @@
 " 	  changes due to postprocessing, this must be reflected in the
 " 	  b:VEndLine buffer local variable prior to return.
 "
-" === Block Local Variables ===================================================
+"------------------------------------------------------------------------------
+" Block Local Variables:						   {{{2
+"------------------------------------------------------------------------------
 "
-" --- Current Variable Properties ---------------------------------------------
+" --- Current Variable Properties -----------------------------------------{{{3
 "
 " b:VStLine	the starting line number of this variable
 " b:VEndLine	the ending line number of this variable (differs only after
@@ -327,7 +366,7 @@
 "               field, empty if there are no alternatives given
 " b:VPars_Msg	message describing most recently encountered error, if any
 "
-" --- Boundaries of the text block to work in ----------------------------------
+" --- Boundaries of the text block to work in ------------------------------{{{3
 "
 " These have to be externally defined, except when calling VPars_RepJumpBlock()
 " (see above), but may be altered elsewhere in this script.
@@ -337,8 +376,8 @@
 " b:AtEndInsert	1 if the end of the text block has been reached.
 "
 "==============================================================================
-
-" Prevent duplicate loading and loading in compatible mode.
+"				Startup Sequence			   {{{1
+"==============================================================================
 "
 if exists("g:vpars_vim") || &cp
     finish
@@ -353,18 +392,44 @@ endif
 "
 " We keep the version number here for external reference.
 " This is major_version * 100 + minor_version:
-let g:vpars_vim = 101
+"
+let g:vpars_vim = 100
 
-" Load initialization file along the runtimepath:
-runtime vparsrc.vim
+" Load user definitions along the runtimepath:
+"
+runtime vpars.rc
+
+" Define a local shortcut leader (defaults to ",").
+"
+let s:LL = ","
+if exists("g:VPars_LocalLeader")
+    let s:LL = g:VPars_LocalLeader
+endif
+:let maplocalleader = s:LL
+"
+" Make sure a backslash will show in the menus.
+"
+if s:LL == "\\"
+    let s:LL = "\\\\"
+endif
 
 "==============================================================================
-"                               Initialization
+"                               Initialization				   {{{2
 "==============================================================================
+
+" Save current Vim options and use default ones.
+" (These will be reset at the end of the script.)
+"
+let savecpo = &cpoptions
+set cpoptions&vim
+
+"------------------------------------------------------------------------------
+" Main Initialization:							   {{{3
+"------------------------------------------------------------------------------
 
 function VPars_Init()
 
-" --- Key to call the 'Next Variable' Function --------------------------------
+" --- Key to call the 'Next Variable' Function ----------------------------{{{4
 "
 " Define the key to trigger to replace and find the next variable actions.
 
@@ -381,7 +446,7 @@ else
     let s:NextKey = "<F3>"
 endif
 
-" --- Mappings ----------------------------------------------------------------
+" --- Mappings ------------------------------------------------------------{{{4
 "
 " Map the 'Next Variable' key behaviour.
 " But first remove an old mapping if necessary.
@@ -405,66 +470,197 @@ endif
 "
 :exe "inoremap <silent> ".s:NextKey." x<Esc>:call VPars_RepJump(1)<Esc>a"
 
-" --- Alternate Shortcut Mappings ---------------------------------------------
+" --- Alternate Shortcut Mappings -----------------------------------------{{{4
 
-let s:AltNext = ",jj"
+let s:AltNext = "jj"
 if exists( "g:VPars_AltNext" )
     let s:AltNext = g:VPars_AltNext
 endif
 
-let s:AltBegin = ",jb"
+let s:AltBegin = "jb"
 if exists( "g:VPars_AltBegin" )
     let s:AltBegin = g:VPars_AltBegin
 endif
 
-let s:AltEnd = ",je"
+let s:AltEnd = "je"
 if exists( "g:VPars_AltEnd" )
     let s:AltEnd = g:VPars_AltEnd
 endif
 
+let s:AltInv = "ji"
+if exists( "g:VPars_AltInv" )
+    let s:AltInv = g:VPars_AltInv
+endif
+
+let s:AltShow = "jo"
+if exists( "g:VPars_AltShow" )
+    let s:AltShow = g:VPars_AltShow
+endif
+
 if s:AltNext != ""
-    :exe "nnoremap <silent> ".s:AltNext."       :call VPars_RepJump(0)<Esc>a"
-    :exe "vnoremap <silent> ".s:AltNext."  <Esc>:call VPars_RepJumpBlock()<Esc><Esc>a"
-    :exe "inoremap <silent> ".s:AltNext." x<Esc>:call VPars_RepJump(1)<Esc>a"
+    :exe "nnoremap <silent> <LocalLeader>".s:AltNext."       :call VPars_RepJump(0)<CR>a"
+    :exe "vnoremap <silent> <LocalLeader>".s:AltNext."  <Esc>:call VPars_RepJumpBlock()<CR><Esc>a"
+    :exe "inoremap <silent> <LocalLeader>".s:AltNext." x<Esc>:call VPars_RepJump(1)<CR>a"
     let s:OldAltNext = s:AltNext
 else
     if exists( "s:OldAltNext" ) && s:OldAltNext != ""
-	exe "nunmap ".s:OldAltNext
-	exe "vunmap ".s:OldAltNext
-	exe "iunmap ".s:OldAltNext
+	exe "nunmap <LocalLeader>".s:OldAltNext
+	exe "vunmap <LocalLeader>".s:OldAltNext
+	exe "iunmap <LocalLeader>".s:OldAltNext
     endif
 endif
 
 if s:AltBegin != ""
-    :exe "nnoremap <silent> ".s:AltBegin."      :call VPars_JumpBegin()<Esc>a"
-    :exe "inoremap <silent> ".s:AltBegin." <Esc>:call VPars_JumpBegin()<Esc>a"
+    :exe "nnoremap <silent> <LocalLeader>".s:AltBegin."      :call VPars_JumpBegin()<CR>"
+    :exe "inoremap <silent> <LocalLeader>".s:AltBegin." <Esc>:call VPars_JumpBegin()<CR>i"
+    :exe "vnoremap <silent> <LocalLeader>".s:AltBegin." <Esc>:call VPars_JumpBegin()<CR><Esc>i"
     let s:OldAltBegin = s:AltBegin
 else
     if exists( "s:OldAltBegin" ) && s:OldAltBegin != ""
-	exe "nunmap ".s:OldAltBegin
-	exe "iunmap ".s:OldAltBegin
+	exe "nunmap <LocalLeader>".s:OldAltBegin
+	exe "iunmap <LocalLeader>".s:OldAltBegin
     endif
 endif
 
 if s:AltEnd != ""
-    :exe "nnoremap <silent> ".s:AltEnd."      :call VPars_JumpEnd()<Esc>a"
-    :exe "inoremap <silent> ".s:AltEnd." <Esc>:call VPars_JumpEnd()<Esc>a"
+    :exe "nnoremap <silent> <LocalLeader>".s:AltEnd."      :call VPars_JumpEnd()<CR>"
+    :exe "inoremap <silent> <LocalLeader>".s:AltEnd." <Esc>:call VPars_JumpEnd()<CR>A"
+    :exe "vnoremap <silent> <LocalLeader>".s:AltEnd." <Esc>:call VPars_JumpEnd()<CR><Esc>A"
     let s:OldAltEnd = s:AltEnd
 else
     if exists( "s:OldAltEnd" ) && s:OldAltEnd != ""
-	exe "nunmap ".s:OldAltEnd
-	exe "iunmap ".s:OldAltEnd
+	exe "nunmap <LocalLeader>".s:OldAltEnd
+	exe "iunmap <LocalLeader>".s:OldAltEnd
+    endif
+endif
+
+if s:AltInv != ""
+    :exe "nnoremap <silent> <LocalLeader>".s:AltInv."      :call VPars_InvalidateBlock()<CR>"
+    :exe "inoremap <silent> <LocalLeader>".s:AltInv." <Esc>:call VPars_InvalidateBlock()<CR>"
+    let s:OldAltInv = s:AltInv
+else
+    if exists( "s:OldAltInv" ) && s:OldAltInv != ""
+	exe "nunmap <LocalLeader>".s:OldAltInv
+	exe "iunmap <LocalLeader>".s:OldAltInv
+    endif
+endif
+
+if s:AltShow != ""
+    :exe "nnoremap <silent> <LocalLeader>".s:AltShow."      :call VPars_ShowBlock()<CR>"
+    :exe "inoremap <silent> <LocalLeader>".s:AltShow." <Esc>:call VPars_ShowBlock()<CR>"
+    let s:OldAltShow = s:AltShow
+else
+    if exists( "s:OldAltShow" ) && s:OldAltShow != ""
+	exe "nunmap <LocalLeader>".s:OldAltShow
+	exe "iunmap <LocalLeader>".s:OldAltShow
     endif
 endif
 
 endfunction
 
 "==============================================================================
-"                                 Functions
+"				   Menu Setup				   {{{1
 "==============================================================================
+"
+" These are meant to be called by external scripts to make the VPars navigation
+" functions available on another menu.
+"
+"------------------------------------------------------------------------------
+" Set Up A VPars Menu:							   {{{2
+"
+" <menuLeader> is a string denoting the menu selection the VPars menu shall be
+" put under.
+" <menuLevel> is a string denoting the position (menu priority).
+"------------------------------------------------------------------------------
+"
+function VPars_SetupMenu( menuLeader, menuLevel )
+    exe "nmenu <silent> ".a:menuLevel.".10 ".a:menuLeader.".&next\\ variable<Tab>".s:LL.s:AltNext." :call VPars_RepJump(0)<Esc>a"
+    exe "imenu <silent> ".a:menuLevel.".10 ".a:menuLeader.".&next\\ variable<Tab>".s:LL.s:AltNext." x<Esc>:call VPars_RepJump(1)<Esc>a"
+    exe "vmenu <silent> ".a:menuLevel.".10 ".a:menuLeader.".&next\\ variable<Tab>".s:LL.s:AltNext." <Esc>:call VPars_RepJumpBlock()<Esc><Esc>a"
+    "
+    exe "amenu <silent> ".a:menuLevel.".15 ".a:menuLeader.".-VparsJump- :"
+    "
+    exe "nmenu <silent> ".a:menuLevel.".20 ".a:menuLeader.".go\\ block\\ &begin<Tab>".s:LL.s:AltBegin." :call VPars_JumpBegin()<Esc>"
+    exe "imenu <silent> ".a:menuLevel.".20 ".a:menuLeader.".go\\ block\\ &begin<Tab>".s:LL.s:AltBegin." <Esc>:call VPars_JumpBegin()<Esc>i"
+    exe "vmenu <silent> ".a:menuLevel.".20 ".a:menuLeader.".go\\ block\\ &begin<Tab>".s:LL.s:AltBegin." :call VPars_JumpBegin()<Esc><Esc>i"
+    "
+    exe "nmenu <silent> ".a:menuLevel.".30 ".a:menuLeader.".go\\ block\\ &end<Tab>".s:LL.s:AltEnd." :call VPars_JumpEnd()<Esc>"
+    exe "imenu <silent> ".a:menuLevel.".30 ".a:menuLeader.".go\\ block\\ &end<Tab>".s:LL.s:AltEnd." <Esc>:call VPars_JumpEnd()<Esc>A"
+    exe "vmenu <silent> ".a:menuLevel.".30 ".a:menuLeader.".go\\ block\\ &end<Tab>".s:LL.s:AltEnd." :call VPars_JumpEnd()<Esc><Esc>A"
+    "
+    exe "amenu <silent> ".a:menuLevel.".35 ".a:menuLeader.".-VparsBlock- :"
+    "
+    exe "amenu <silent> ".a:menuLevel.".40 ".a:menuLeader.".sh&ow\\ block<Tab>".s:LL.s:AltShow." :call VPars_ShowBlock()<Esc>"
+    exe "amenu <silent> ".a:menuLevel.".40 ".a:menuLeader.".&invalidate\\ block<Tab>".s:LL.s:AltInv." :call VPars_InvalidateBlock()<Esc>"
+endfunction
 
 "------------------------------------------------------------------------------
-" Initialize Buffer Variables:
+" Disable VPars Menu:							   {{{2
+"
+" <menuLeader> is a string denoting the menu selection the VPars menu shall be
+" put under.
+"------------------------------------------------------------------------------
+"
+function VPars_DisableMenu( menuLeader )
+    exe "nmenu disable ".a:menuLeader.".&next\\ variable"
+    exe "imenu disable ".a:menuLeader.".&next\\ variable"
+    exe "vmenu disable ".a:menuLeader.".&next\\ variable"
+    "
+    exe "nmenu disable ".a:menuLeader.".go\\ block\\ &begin"
+    exe "imenu disable ".a:menuLeader.".go\\ block\\ &begin"
+    exe "vmenu disable ".a:menuLeader.".go\\ block\\ &begin"
+    "
+    exe "nmenu disable ".a:menuLeader.".go\\ block\\ &end"
+    exe "imenu disable ".a:menuLeader.".go\\ block\\ &end"
+    exe "vmenu disable ".a:menuLeader.".go\\ block\\ &end"
+    "
+    exe "nmenu disable ".a:menuLeader.".sh&ow\\ block"
+    exe "nmenu disable ".a:menuLeader.".&invalidate\\ block"
+endfunction
+
+"------------------------------------------------------------------------------
+" Enable VPars Menu:							   {{{2
+"
+" <menuLeader> is a string denoting the menu selection the VPars menu shall be
+" put under.
+"------------------------------------------------------------------------------
+"
+function VPars_EnableMenu( menuLeader )
+    exe "nmenu enable ".a:menuLeader.".&next\\ variable"
+    exe "imenu enable ".a:menuLeader.".&next\\ variable"
+    exe "vmenu enable ".a:menuLeader.".&next\\ variable"
+    "
+    exe "nmenu enable ".a:menuLeader.".go\\ block\\ &begin"
+    exe "imenu enable ".a:menuLeader.".go\\ block\\ &begin"
+    exe "vmenu enable ".a:menuLeader.".go\\ block\\ &begin"
+    "
+    exe "nmenu enable ".a:menuLeader.".go\\ block\\ &end"
+    exe "imenu enable ".a:menuLeader.".go\\ block\\ &end"
+    exe "vmenu enable ".a:menuLeader.".go\\ block\\ &end"
+    "
+    exe "nmenu enable ".a:menuLeader.".sh&ow\\ block"
+    exe "nmenu enable ".a:menuLeader.".&invalidate\\ block"
+endfunction
+
+"------------------------------------------------------------------------------
+" Remove VPars Menu:							   {{{2
+"
+" <menuLeader> is a string denoting the menu selection the VPars menu shall be
+" put under.
+"------------------------------------------------------------------------------
+"
+function VPars_RemoveMenu( menuLeader )
+    exe "aunmenu ".a:menuLeader
+endfunction
+
+"==============================================================================
+"                                 Functions				   {{{1
+"==============================================================================
+
+"===== Auxiliary Functions ================================================{{{2
+
+"------------------------------------------------------------------------------
+" Initialize Buffer Variables:						   {{{3
 "------------------------------------------------------------------------------
 "
 function VPars_ResetVar()
@@ -482,8 +678,10 @@ function VPars_ResetVar()
     let b:VPars_Msg	= ""
 endfunction
 
+"===== Variables Handling ================================================={{{2
+
 "------------------------------------------------------------------------------
-" Find Next Variable:
+" Find Next Variable:							   {{{3
 " 
 " Searches the next variable from the cursor position
 " If <glob> is zero the search is limited by the last inserted text block,
@@ -572,13 +770,14 @@ function s:GoNextVar( glob )
     if globalsearch
 	call cursor( curline, curcol )
     else
-	call cursor( b:EndInsert, 999 )
+	call cursor( b:EndInsert, 1 )
+	:normal $
     endif
     return 0
 endfunction
 
 "------------------------------------------------------------------------------
-" Repeatedly Find Next Variable:
+" Repeatedly Find Next Variable:					   {{{3
 "
 " Works exactly like s:GoNextVar, but jumps around to b:StartInsert in order
 " to find another variable mark which may have been skipped in the previous run.
@@ -642,7 +841,7 @@ function VPars_NextVar( glob )
 endfunction
 
 "------------------------------------------------------------------------------
-" Parse Variable:
+" Parse Variable:							   {{{3
 "
 " Parses the variable on line <linenr>, starting at column <varstart> (which
 " must be immediately before a '<|' mark).
@@ -823,7 +1022,7 @@ function s:ParseVariable( linenr, varstart )
 endfunction
 
 "------------------------------------------------------------------------------
-" Replace Variable:
+" Replace Variable:							   {{{3
 "
 " Assumes the cursor somewhere between '<| .. |>' of the most recently parsed
 " variable.
@@ -944,6 +1143,15 @@ function s:ReplVar( firsttime )
 	    endif
 	endif
 	"
+	" Adjust for a delay escape dot left or right?
+	if strpart( thisline, varcol - 2, 4 ) == "<.<|" || strpart( thisline, varcol - 3, 5 ) == "<..<|"
+	    let varcol -= 1
+	endif
+	if strpart( thisline, endcol, 4 ) == "|>.>" || strpart( thisline, endcol, 5 ) == "|>..>"
+	    let endcol += 1
+	endif
+	"
+	" Finally we may replace the variable.
 	let head = strpart( thisline, 0, varcol )
 	let tail = strpart( thisline, endcol + 2 )
 	call setline( ".", head.b:VarSubst.tail )
@@ -969,8 +1177,10 @@ function s:ReplVar( firsttime )
     endif
 endfunction
 
+"===== Text Block Replacement Actions ====================================={{{2
+
 "------------------------------------------------------------------------------
-" Substitute Variables In The Most Recently Inserted Text Block:
+" Substitute Variables In The Most Recently Inserted Text Block:	   {{{3
 "
 " Finds all variables labeled b:VarLabel in the most recently inserted text
 " block in this buffer and replaces them by the b:VarSubst text.
@@ -1029,7 +1239,7 @@ function s:SubstVar()
 endfunction
 
 "------------------------------------------------------------------------------
-" Replace Variables From A List:
+" Replace Variables From A List:					   {{{3
 "
 " Accepts a <list> of labal-replacement string pairs of the form:
 "     [['label_1' 'replacement_1'] ... ['label_n' 'replacement_n']]
@@ -1091,8 +1301,8 @@ function VPars_RepList( list )
 endfunction
 
 "------------------------------------------------------------------------------
-" Adjust Line Numbers After Long Replacements:
-
+" Adjust Line Numbers After Long Replacements:				   {{{3
+"
 " Tries to figure out whether the user typed in a multiline replacement string
 " and adjusts the b:VEndLine and b:EndInsert line nubers accordingly.
 "------------------------------------------------------------------------------
@@ -1183,8 +1393,10 @@ function s:AdjustLines()
     endif
 endfunction
 
+"===== Checking Stuff ====================================================={{{2
+
 "------------------------------------------------------------------------------
-" Check Whether Cursor Is In A Variable:
+" Check Whether Cursor Is In A Variable:				   {{{3
 "
 " RETURN:
 "  0 if the cursor is not positioned inside a '<| .. |>' variable
@@ -1288,7 +1500,7 @@ function s:CursorInVar()
 endfunction
 
 "------------------------------------------------------------------------------
-" Check Whether The Cursor Is In The Most Recently Inserted Block:
+" Check Whether The Cursor Is In The Most Recently Inserted Block:	   {{{3
 "
 " RETURN:
 "  0 if the cursor is not positioned inside the  block, otherwise 1.
@@ -1318,8 +1530,10 @@ function s:CursorInBlock()
     return 0
 endfunction
 
+"===== Outside Control ===================================================={{{2
+
 "------------------------------------------------------------------------------
-" Replace And Jump To Next Variable:
+" Replace And Jump To Next Variable:					   {{{3
 "
 " If the cursor is inside a variable replaces this accordingly and every equally
 " labeled variable inside this most recently inserted text block. Then tries to
@@ -1383,7 +1597,7 @@ function VPars_RepJump( insmode )
 endfunction
 
 "------------------------------------------------------------------------------
-" Replace And Jump Inside Selected Block:
+" Replace And Jump Inside Selected Block:				   {{{3
 "
 " Like VPars_RepJump but marks the selected block boundaries with b:StartInsert
 " and b:EndInsert respectively and seyrches the first variable from the
@@ -1406,27 +1620,34 @@ function VPars_RepJumpBlock()
 endfunction
 
 "------------------------------------------------------------------------------
-" Jump To End:
+" Jump To End:								   {{{3
 "
 " Puts the cursor at the end of the dedicated text block and flags AtEndInsert.
 "------------------------------------------------------------------------------
 "
 function VPars_JumpEnd()
+    if ! exists("b:StartInsert") || ! exists("b:EndInsert")
+	return
+    endif
     if b:StartInsert == 0 || b:EndInsert == 0
 	return
     endif
-    call cursor( b:EndInsert, 999 )
+    call cursor( b:EndInsert, 1 )
+    :normal $
     let b:AtEndInsert = 1
 endfunction
 
 "------------------------------------------------------------------------------
-" Jump To Beginning:
+" Jump To Beginning:							   {{{3
 "
 " Puts the cursor at the beginning of the dedicated text block and resets
 " AtEndInsert.
 "------------------------------------------------------------------------------
 "
 function VPars_JumpBegin()
+    if ! exists("b:StartInsert") || ! exists("b:EndInsert")
+	return
+    endif
     if b:StartInsert == 0 || b:EndInsert == 0
 	return
     endif
@@ -1434,10 +1655,53 @@ function VPars_JumpBegin()
     let b:AtEndInsert = 0
 endfunction
 
-"=== Body Actions =============================================================
+"===== Text Block Status =================================================={{{2
+
+"------------------------------------------------------------------------------
+" Show Text Block:							   {{{3
+"------------------------------------------------------------------------------
+"
+function VPars_ShowBlock()
+    if ! exists("b:StartInsert") || ! exists("b:EndInsert")
+	echohl WarningMsg
+	echo "There is no dedicated text block defined yet."
+	echohl None
+	return
+    endif
+    if b:StartInsert == 0 || b:EndInsert == 0
+	echohl WarningMsg
+	echo "There is no dedicated text block defined yet."
+	echohl None
+	return
+    endif
+    call cursor( b:StartInsert, 0 )
+    :exe "normal V".b:EndInsert."gg"
+endfunction
+
+"------------------------------------------------------------------------------
+" Invalidate Text Block:						   {{{3
+"------------------------------------------------------------------------------
+"
+function VPars_InvalidateBlock()
+    let b:StartInsert = 0
+    let b:EndInsert = 0
+    let b:AtEndInsert = 0
+endfunction
+
+"==============================================================================
+"				  Body Actions				   {{{1
+"==============================================================================
 
 call VPars_Init()
 
-"=== End of vpars.vim =========================================================
+"=============================================================================
+"				 Final Clean Up
+"=============================================================================
+
+" ----- Restore cpoptions ----------------------------------------------------
 "
-" vim:ft=vim:ts=8:sw=4:tw=0:fo=croql
+let &cpoptions = savecpo
+
+"=== End of vpars.vim =====================================================}}}1
+"
+" vim:ft=vim:ts=8:sw=4:tw=0:fo=croql:enc=utf8:fdm=marker:fdc=7:fdl=0:fen

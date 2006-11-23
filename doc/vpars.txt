@@ -1,7 +1,7 @@
-*vpars.txt*	VPars: Vim Parameter Substitution      Last Change: 2006-11-10
+*vpars.txt*	VPars: Vim Parameter Substitution      Last Change: 2006-11-23
 
 			      VPars User Manual~
-				 Version 1.1~
+				 Version 1.2~
 
 		       Copyright (c) 2006 by Bernd Pol
 			    <bernd.pol@online.de>
@@ -38,6 +38,7 @@ CONTENTS                                              *vpars* *vpars-contents*
 |vpars-variables-order|		    Defining a variable sequence order
 |vpars-variables-order-example|		An example
 |vpars-variables-order-delay|		Delaying variables
+|vpars-suppress-delays|			How to suppress a delay
 
 |vpars-substitution|		Variable substitution
 |vpars-substitution-simple|	    Simple variables
@@ -47,9 +48,12 @@ CONTENTS                                              *vpars* *vpars-contents*
 |vpars-modes|				Working modes
 |vpars-substitution-block|		Dedicated text block
 |vpars-substitution-delayed|		Delayed variables
+|vpars-substitution-no-delay|		Escaping delay brackets
 |vpars-atend|				The block end condition
 |vpars-jump-end|			Jumping to the end of the text block
 |vpars-jump-begin|			Jumping to the beginning of the text block
+|vpars-show-block|			Show the dedicated text block
+|vpars-invalidate-block|		Invalidate the dedicated text block
 |vpars-batch|			    Batch processing a substitution list
 |vpars-batch-example|			Example
 |vpars-batch-syntax|			Syntax
@@ -64,8 +68,10 @@ CONTENTS                                              *vpars* *vpars-contents*
 
 |vpars-install-and-customize|	Installing and customizing
 |vpars-installing|		    Installing VPars
+|vpars-user-definitions|	    User Definitions
 |vpars-key|			    Redefining the trigger key (default: <F3>)
 |vpars-alternate-keys|		    Alternate shortcut keys
+|vpars-include-menu|		    Including a VPars Menu
 |vpars-skip-atend|		    Advancing over the block end
 |vpars-verbose|			    Using verbose mode
 
@@ -883,6 +889,60 @@ Note:
   ones, even if explicitely labeled, will always be skipped.
 
 ==============================================================================
+HOW TO SUPPRESS A DELAY	      *vpars-suppress-delays* *vpars-delay-escape-dot*
+
+While the mechanism to delay a VPars variable is simple and elegant, there are
+occasions where one needs a slight notation change. Consider this Perl
+fragment:
+>
+	while (<<|file handle|>>)
+	{
+	}
+<
+Now, after replacing the <|file handle|> variable by, say, "my_file", the
+statement actually should look like:
+>
+	while (<my_file>)
+	{
+	}
+<
+But this does not work. VPars will assume the <<|file handle|>> being delayed
+and finally will end up with this:
+>
+	while (my_file)
+	{
+	}
+<
+To solve situations like this, VPars allows to suppress the delay meaning of a
+<...> bracket pair by placing so-called "delay escape dots" around the VPars
+variable. With these, our example will look like:
+>
+	while (<.<|file handle|>.>)
+	{
+	}
+<
+If VPars detects such a "<.<|" or "|>.>" delimiter sequence, it will silently
+remove the escape dot after actually having replaced the variable. Thus our
+example will exectly work as expected and produce:
+>
+	while (<my_file>)
+	{
+	}
+<
+And what if you really want to end up with a situation like this:
+>
+	while (<.my_file.>)
+	{
+	}
+<
+Well, in this case you will have to escape the escape dot itself:
+>
+	while (<..<|file handle|>..>)
+	{
+	}
+<
+
+==============================================================================
 VARIABLE SUBSTITUTION					  *vpars-substitution*
 
 Details on how VPars will replace a variable by its substition text were
@@ -999,6 +1059,69 @@ See|vpars-delaying-variables|for more detail about delayed variable
 processing in both VPars working modes.
 
 
+ESCAPING DELAY BRACKETS				 *vpars-substitution-no-delay*
+
+It is possible to escape from the delay meaning of a "< ... >" brackets pair
+through the use of delay escape dots.
+
+escaped delay:~
+
+	<.<| ... |>.>~
+
+If found, will VPars in the course of a variable substitution replace the dot
+between the "<|" starting delimiter and an immediately adjacent "<" bracket.
+Likewise will the dot between a "|>" ending delimiter and an immediately
+adjacent ">" bracket be removed.  Thus:
+>
+	<.<|my value|>.>
+
+will e.g. become:
+>
+	<my value>
+
+If such a dot shall remain in place after substitution, it must be escaped
+again, using two dots beteen the brackets:
+
+escaped delay dots:~
+
+	<..<| ... |>..>~
+
+The construct:
+>
+	<..<|my value|>..>
+
+might then become:
+>
+	<.my value.>
+
+Note:
+
+- This mechanism does work only if the brackets are immedeiately adjacent to
+  the escape delay dot.  All other cases will be left alone. Thus:
+  >
+  	<. <|my value|>. >
+<
+  will become:
+>
+	<. my value. >
+<
+  (There will be extra characters -- spaces in this case -- around the dots.)
+
+- The Vpars variable inside escape dots may however be delayed as usual, i.e.
+  the following contruct is valid: >
+
+  	<.<<<|my value|>>>.>
+<
+- Although it is more aesthetically pleasing to have the variable delay
+  escaped by a pair of dots, this is not really necessary.  A single escape
+  delay dot will suffice to break the delay meaning of some outer brackets.
+  Thus the following will eventually all result in "<my value>": >
+
+  	<.<|my value|>.>
+	<.<|my value|>>
+	<<|my value|>.>
+
+
 THE BLOCK END CONDITION		     *vpars-block-end-condition* *vpars-atend*
 
 If in the current normal mode processing turn no more VPars variables were
@@ -1021,28 +1144,6 @@ g:VPars_SkipBlockend~
  	Defaults to 0, which causes the cursor to stop at the block end.
 
 ------------------------------------------------------------------------------
-
-JUMPING TO THE END OF THE TEXT BLOCK			      *vpars-jump-end*
-
-There are occasions where one would want to skip the processing of the VPars
-variables in the dedicated text block altogether.  VPars provides function to
-do so: >
-
-	VPars_JumpEnd()
-		Causes the cursor be put at the end of the currently defined
-		dedicated text block (the end of the b:EndInsert line) and
-		sets b:AtEndInsert to 1, thus disabling any processing while
-		keeping the b:StartInsert and b:EndInsert boundaries intact.
-
-This function is by default bound to the >
-	,je 
-shortcut.  This mapping can be redefined, see |vpars-shortcut-keys|.
-
-Jumping prematurely to the end of the most recently inserted text block would
-i.e. allow a template script to chain different text blocks together and have
-them processed afterwards in one single piece.
-
-------------------------------------------------------------------------------
 JUMPING TO THE BEGINNING OF THE TEXT BLOCK		    *vpars-jump-begin*
 
 The effect of prematurely jumping to the end of the dedicated text block can
@@ -1055,13 +1156,63 @@ be undone by another VPars function: >
 
 This function is by default bound to the >
 	,jb 
-shortcut.  This mapping can be redefined, see |vpars-shortcut-keys|.
+shortcut.  This mapping can be redefined, see|vpars-shortcut-keys|.
 
 Besides undoing the search lock set up by a premature block end jump there are
 other benefits in prematurely jumping to the text block start.  One main
 effect is in that it allows the user or another script to somewhat circumvent
 the given variables processing order by simply forcing another scan before the
 block end had been reached.
+
+------------------------------------------------------------------------------
+
+JUMPING TO THE END OF THE TEXT BLOCK			      *vpars-jump-end*
+
+There are occasions where one would want to skip the processing of the VPars
+variables in the dedicated text block altogether.  VPars provides a function
+to do so: >
+
+	VPars_JumpEnd()
+		Causes the cursor be put at the end of the currently defined
+		dedicated text block (the end of the b:EndInsert line) and
+		sets b:AtEndInsert to 1, thus disabling any processing while
+		keeping the b:StartInsert and b:EndInsert boundaries intact.
+
+This function is by default bound to the >
+	,je 
+shortcut.  This mapping can be redefined, see|vpars-shortcut-keys|.
+
+Jumping prematurely to the end of the most recently inserted text block would
+i.e. allow a template script to chain different text blocks together and have
+them processed afterwards in one single piece.
+
+------------------------------------------------------------------------------
+SHOW THE DEDICATED TEXT BLOCK				    *vpars-show-block*
+
+Visually selects the lines between b:StartInsert and b:EndInsert, thus making
+the current dedicated text block visible.
+
+This function is by default bound to the >
+	',jo'
+shortcut.  This mapping can be redefined, see|vpars-shortcut-keys|.
+
+Note:
+- Be careful using this function. It will move the cursor to the b:EndInsert
+  final block line.
+
+------------------------------------------------------------------------------
+INVALIDATE THE DEDICATED TEXT BLOCK		      *vpars-invalidate-block*
+
+Resets the b:StartInsert, b:EndInsert, and b:AtEndInsert block local
+variables, thus making the current dedicated text block invalid.
+
+This function is by default bound to the >
+	',ji'
+shortcut.  This mapping can be redefined, see|vpars-shortcut-keys|.
+
+Note:
+- Be careful using this function. It's effects cannot be undone, except by
+  explicitely reselecting the block.
 
 ------------------------------------------------------------------------------
 BATCH PROCESSING A SUBSTITUTION LIST    *vpars-batch* *vpars-substitution-list*
@@ -1081,7 +1232,7 @@ you want to utilize VPars with some template like this: >
 	do you know about<|value|> VPars?
 	Yours,
 
-Of course thic could be easily processed by VPars through repeated <F3>
+Of course this could be easily processed by VPars through repeated <F3>
 keypresses.  But assume further there is some data base containing for
 instance: >
 
@@ -1180,7 +1331,7 @@ GLOBAL VARIABLES	*vpars-globals*
 
 g:vpars_vim~
 	Prevents duplicate loading.
-	Holds the version number if existent: major version number times 100
+	Holds the version number if existent: maor version number times 100
 	plus minor version number.
 
 g:VPars_NextKey~
@@ -1195,7 +1346,7 @@ g:VPars_AltNext~
 	then calling VPars_Init() to re-initialize VPars.
 	Setting g:VPars_AltNext to an empty string in this case will disable
 	the shortcut.
-	Defaults to ',jj'.
+	Defaults to 'jj'.
 
 g:VPars_AltBegin~
 	Alternate shortcut to trigger the VPars_JumpBegin() function.
@@ -1203,7 +1354,7 @@ g:VPars_AltBegin~
 	then calling VPars_Init() to re-initialize VPars.
 	Setting g:VPars_AltBegin to an empty string in this case will disable
 	the shortcut.
-	Defaults to ',jb'.
+	Defaults to 'jb'.
 
 g:VPars_AltEnd~
 	Alternate shortcut to trigger the VPars_JumpEnd() function.
@@ -1211,8 +1362,29 @@ g:VPars_AltEnd~
 	then calling VPars_Init() to re-initialize VPars.
 	Setting g:VPars_AltEnd to an empty string in this case will disable
 	the shortcut.
-	Defaults to ',je'.
+	Defaults to 'je'.
 
+g:VPars_AltShow~
+	Shortcut to trigger the VPars_Show() function.
+	This shortcut may be redefined any time by setting g:VPars_AltShow and
+	then calling VPars_Init() to re-initialize VPars.
+	Setting g:VPars_AltShow to an empty string in this case will disable
+	the shortcut.
+	Defaults to 'jo'.
+
+g:VPars_AltInv~
+	Shortcut to trigger the VPars_InvalidateBlock() function.
+	This shortcut may be redefined any time by setting g:VPars_AltInv and
+	then calling VPars_Init() to re-initialize VPars.
+	Setting g:VPars_AltInv to an empty string in this case will disable
+	the shortcut.
+	Defaults to 'ji'.
+
+g:VPars_LocalHeader~
+	Redefines the <LocalHeader> initial shortcut sequence used by VPars.
+	This must be defined prior to the start of VPars, in a vpars.rc
+	initialization file (see:|vpars-user-definitions|).
+	Defaults to ','.
 
 g:VPars_Verbose~
 	Meant for testing. If nonzero, issue warning messages in some cases of
@@ -1270,6 +1442,42 @@ VPars_ResetVar()~
 	Note:
 	- This does not affect the b:StartInsert and b:EndInsert boundary
 	  markers of the dedicated text block.
+
+	  							  *vpars-menu*
+VPars_SetupMenu( menuLeader, menuLevel )~
+	Makes some VPars functions via a menu under the caller submitted
+	<menuLeader> submenu entry at the <menuLevel> position.
+
+	Example: >
+
+		call VPars_SetupMenu("IDE.substitute\\ variables", "100.50")
+	
+<	will produce a menu tree like this in the Vim GUI: >
+
+		IDE
+			substitute variables
+				next variable		,jj
+				go block start		,jb
+				go block end		,je
+				show block		,jo
+				invalidate block	,ji
+
+<	where "IDE" is the (usually already existing) top level menu item. The
+	priority level "100" denotes the realtive position of "IDE" in the GUI
+	top menu, while the priority ".50" determines the relative position of
+	the "substitute variables" submenu entry in the "IDE" menu.
+
+	(For priority levels in Vim menus, see|menu-priority|.)
+
+
+VPars_DisableMenu( menuLeader )~
+	Disables all VPars menu entries.
+
+VPars_EnableMenu( menuLeader )~
+	Enables all VPars menu entries.
+
+VPars_DisableMenu( menuLeader )~
+	Removes the whole VPars menu.
 
 VPars_NextVar( global )~
 	Find next variable, delimited by <|..|>
@@ -1593,6 +1801,16 @@ will display the CONTENTS section of this help, and >
 will get you to the INDEX section (which collects all VPars help targets).
 
 ------------------------------------------------------------------------------
+USER DEFINITIONS		    *vpars-user-definitions* *vpars-init-file*
+
+The behavior of VPars is defined by some global variables (|vpars-globals|).
+Preferred non-default settings can be put into a >
+
+	vpars.rc
+
+file. VPars will look for this file along the Vim|'runtimepath'|. Usually this
+file will be put into the user's Vim directory ($HOME/.vim on Unix systems). 
+------------------------------------------------------------------------------
 REDEFINING THE TRIGGER KEY		       *vpars-key* *vpars-redefine-F3*
 
 By default, VPars uses the <F3> function key to interactivey substitute a
@@ -1624,27 +1842,61 @@ ALTERNATE SHORTCUT KEYS		  *vpars-alternate-keys* *vpars-shortcut-keys*
 VPars does by default provide a set of alternate shortcut keys which are
 initially mapped as such: >
 
-	,jj	triggers the next variable search (like <F3>)
-	,je	jumps to the end of the dedicated text block
+	jj	triggers the next variable search (like <F3>)
+<		(|vpars-substitution|) >
+	jb	jumps to the beginning of the dedicated text block
+		and re-enables the search
+<		(|vpars-jump-begin|) >
+	je	jumps to the end of the dedicated text block
 		and disables further seaches, even if there are
 		some variables still unprocessed
-	,jb	jumps to the beginning of the dedicated text block
-		and re-enables the search
+<		(|vpars-jump-end|) >
+	jo	visually selects the dedicated text block
+<		(|vpars-show-block|) >
+	ji	invalidates the dedicated text block
+<		(|vpars-invalidate-block|)
 
 The user or some other script can remap or even unmap these shortcuts by means
 of setting some global variables and subsequently re-initializing VPars
 through a VPars_Init() call: >
 
-	g:VPars_AltNext		remaps the ',jj' shortcut
-	g:VPars_AltBegin	remaps the ',jb' shortcut
-	g:VPars_AltEnd		remaps the ',je' shortcut
+	g:VPars_AltNext		remaps the 'jj' shortcut
+	g:VPars_AltBegin	remaps the 'jb' shortcut
+	g:VPars_AltEnd		remaps the 'je' shortcut
+	g:VPars_AltShow		remaps the 'jo' shortcut
+	g:VPars_AltInv		remaps the 'ji' shortcut
 
 Setting any of these globals to an empty string will completely unmap the
-shortcut, thus making this alternate function access unavailable.
+shortcut, thus making this alternate shortcut function access unavailable.
 
 Note:
 - VPars will always unmap the previous mapping before mapping the function
   call to the new key definition.
+
+- The shortcuts are preceded by the|<LocalLeader>|which defaults to a comma.
+  It can be redefined using the >
+ 	g:VPars_LocalLeader 
+< variable. Its actual value is kept in the >
+	s:LL
+< script variable.
+
+------------------------------------------------------------------------------
+INCLUDING A VPARS MENU				 	  *vpars-include-menu*
+
+Although VPars was designed to be keyboard controlled, an external script can
+include some GUI menu entries at a desired place. This is controlled via
+several VPars functions.
+
+In general, this allows to insert, remove, or disable/enable in a caller
+supplied menu a submenu like this: >
+
+	next variable		,jj
+	go block begin		,jb
+	go block end		,je
+	show block		,jo
+	invalidate block	,ji
+
+For more detail, see|vpars-menu|.
 
 ------------------------------------------------------------------------------
 ADVANCING OVER THE BLOCK END				    *vpars-skip-atend*
@@ -1746,8 +1998,8 @@ INDEX								 *vpars-index*
 
 |vpars-dedicated-text|			|vpars-default|
 |vpars-default-substitution|		|vpars-defininitions|
-|vpars-delaying-variables|		|vpars-delete|
-|vpars-delimiters|
+|vpars-delay-escape-dot|		|vpars-delaying-variables|
+|vpars-delete|				|vpars-delimiters|
 
 |vpars-empty-alternative|		|vpars-empty-substitution|
 |vpars-example|				|vpars-explicit-colons|
@@ -1761,8 +2013,10 @@ INDEX								 *vpars-index*
 |vpars-hooks|				|vpars-hooks-enable|
 |vpars-hooks-preparse|			|vpars-install-and-customize|
 
+|vpars-include-menu|			|vpars-init-file|
 |vpars-installing|			|vpars-interface|
 |vpars-intro|				|vpars-intro-example|
+|vpars-invalidate-block|
 
 |vpars-jump-begin|			|vpars-jump-end|
 
@@ -1771,7 +2025,8 @@ INDEX								 *vpars-index*
 |vpars-label|				|vpars-left-delimiter|
 |vpars-left-explicit-label|		|vpars-locals|
 
-|vpars-modes|				|vpars-multiple-lines|
+|vpars-menu|				|vpars-modes|
+|vpars-multiple-lines|
 
 |vpars-NL-mark|				|vpars-normal-mode|
 
@@ -1785,7 +2040,7 @@ INDEX								 *vpars-index*
 |vpars-right-delimiter|			|vpars-right-explicit-label|
 |vpars-role-of-the-cursor|
 
-|vpars-shortcut-keys|
+|vpars-shortcut-keys|			|vpars-show-block|
 |vpars-simple-var-delete|		|vpars-simple-variables|
 |vpars-skip-atend|			|vpars-structure|
 |vpars-substitute-multilines|		|vpars-substitution|
@@ -1793,10 +2048,13 @@ INDEX								 *vpars-index*
 |vpars-substitution-cycle|		|vpars-substitution-delayed|
 |vpars-substitution-explicit|		|vpars-substitution-list|
 |vpars-substitution-simple|		|vpars-substitution-text|
+|vpars-suppress-delays|
 
 |vpars-terms|				|vpars-text-block|
 |vpars-text-block-boundaries|		|vpars-thanks|
 |vpars-types|
+
+|vpars-user-definitions|
 
 |vpars-variable-properties|		|vpars-variables|
 |vpars-variables-order|			|vpars-variables-order-delay|
